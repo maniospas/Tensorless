@@ -1,28 +1,30 @@
-# Blazing Metal
+# Tensorless
 
-*Make your CPU behave like a GPU.*
+*Make the CPU behave like a GPU.*
 
 **Author:** Emmanouil (Manios) Krasanakis<br>
 **License:** Apache 2.0
 
+
 ## :fire: CPU vectorization
 
-- Tensors: 6x 128bit numbers store 128x 6bit numbers.
+- No tensors: 6x 128bit numbers store 128x 6bit numbers.
 - No SIMD-specific programming: get parallelization everwhere.
 - Ready-to-use neural componetns.
+- Copy-paste header installation.
 
 ## :rocket: Quickstart
 
-```cpp
-#include "cpunn/types/float5.cpp"
-#include "cpunn/signed.cpp"
+Always compile this framework with the O2 or O3 flag.
 
+```cpp
+#include "tensorless/types/all.h"
 
 int main() {
     int pos0 = 0;
     int pos1 = 1;
-    auto data1 = Signed<Float5>().set(pos0, 1).set(pos1, 0.5);
-    auto data2 = Signed<Float5>().set(pos0, 1.5).set(pos1, 0.45);
+    auto data1 = Signed<Float3>().set(pos0, 1).set(pos1, 0.5);
+    auto data2 = Signed<Float3>().set(pos0, 1.5).set(pos1, 0.45);
     auto sum = data1-data2;
     std::cout<<"Data size: "<<sum.size()<<"\n";
     std::cout << sum<<"\n";
@@ -37,10 +39,6 @@ First, quantize each of the elemnts into N bits. Sumbolically, let's write as A[
 
 We are now in the position of running operations on A[k] in parallel by converting them (compiling them by hand) into B bitwise operations. These operations run for all number, which means that we sped up clock 
 operations at least to B/128 of the original ones. This works in addition to other optimizations, like SIMD.
-
-:bulb: In practice, speed gains are much greater thanks to C++ compiler optimizations - always compile
-this framework with the O3 flag.
-
 
 For example, let's say that you had 8-bit quantized numbers. Using normal SIMD SIMD parallelization we would in theory able to submit
 128/8=16 additions within one clock cycle.

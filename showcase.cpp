@@ -1,9 +1,4 @@
-#include "cpunn/types/float5.cpp"
-#include "cpunn/types/float4.cpp"
-#include "cpunn/types/float3.cpp"
-#include "cpunn/signed.cpp"
-
-
+#include "tensorless/types/all.h"
 
 int main() {
     int pos0 = 0;

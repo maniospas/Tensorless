@@ -1,5 +1,4 @@
-
-#include "cpunn/dense.cpp"
+#include "tensorless/tensorless.h"
 #include <cmath>
 #include <chrono>
 
