@@ -25,6 +25,8 @@ limitations under the License.
 #include "../vecutils.h"
 
 
+namespace tensorless {
+
 class Float4 {
 private:
     VECTOR value;
@@ -221,6 +223,16 @@ public:
         value3 = ret.value3;
         return *this;
     }
+
+    const double sup() {
+        return 1.875;
+    }
+
+    const double inf() {
+        return 0;
+    }
 };
+
+}
 
 #endif // FLOAT4_H

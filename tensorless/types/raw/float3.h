@@ -24,6 +24,7 @@ limitations under the License.
 #include <random>
 #include "../vecutils.h"
 
+namespace tensorless {
 
 class Float3 {
 private:
@@ -204,6 +205,16 @@ public:
         value2 = ret.value2;
         return *this;
     }
+
+    const double sup() {
+        return 1.75;
+    }
+
+    const double inf() {
+        return 0;
+    }
 };
+
+}
 
 #endif // FLOAT3_H

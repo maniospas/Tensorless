@@ -24,6 +24,7 @@ limitations under the License.
 #include <random>
 #include "vecutils.h"
 
+namespace tensorless {
 
 template <typename Number>
 class Signed {
@@ -50,6 +51,14 @@ public:
                 }
             }
         value = value.twosComplement(isNegative);
+    }
+
+    const double sup() {
+        return value.sup();
+    }
+
+    const double inf() {
+        return -value.sup();
     }
 
     const double get(int i) {
@@ -128,5 +137,5 @@ public:
 
 };
 
-
+}
 #endif  // SIGNED_H

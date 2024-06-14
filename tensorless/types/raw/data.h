@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#ifndef DATA_H
-#define DATA_H
+#ifndef Int3_H
+#define Int3_H
 
 #include <iostream>
 #include <vector>
@@ -25,38 +25,39 @@ limitations under the License.
 #include "../vecutils.h"
 
 
-class DATA {
+namespace tensorless {
+class Int3 {
 private:
     VECTOR value;
     VECTOR value1;
     VECTOR value2;
 public:
-    explicit DATA(int v) : value(v) {}
-    explicit DATA(long v) : value(v) {}
-    explicit DATA(long long v) : value(v) {}
-    explicit DATA(int v, int v1, int v2) : value(v), value1(v1), value2(v2) {}
-    explicit DATA(long v, long v1, long v2) : value(v), value1(v1), value2(v2) {}
-    explicit DATA(long long v, long long v1, long long v2) : value(v), value1(v1), value2(v2) {}
-    DATA(const DATA &other) : value(other.value), value1(other.value1), value2(other.value2) {}
-    DATA() : value(0) {}
+    explicit Int3(int v) : value(v) {}
+    explicit Int3(long v) : value(v) {}
+    explicit Int3(long long v) : value(v) {}
+    explicit Int3(int v, int v1, int v2) : value(v), value1(v1), value2(v2) {}
+    explicit Int3(long v, long v1, long v2) : value(v), value1(v1), value2(v2) {}
+    explicit Int3(long long v, long long v1, long long v2) : value(v), value1(v1), value2(v2) {}
+    Int3(const Int3 &other) : value(other.value), value1(other.value1), value2(other.value2) {}
+    Int3() : value(0) {}
 
-    DATA(double) = delete;
-    DATA(float) = delete;
-    DATA(unsigned int) = delete;
+    Int3(double) = delete;
+    Int3(float) = delete;
+    Int3(unsigned int) = delete;
 
-    DATA& operator=(int) = delete;
-    DATA& operator=(double) = delete;
-    DATA& operator=(float) = delete;
-    DATA& operator=(long) = delete;
-    DATA& operator=(unsigned int) = delete;
-    DATA& operator=(unsigned long) = delete;
-    DATA& operator=(unsigned long long) = delete;
+    Int3& operator=(int) = delete;
+    Int3& operator=(double) = delete;
+    Int3& operator=(float) = delete;
+    Int3& operator=(long) = delete;
+    Int3& operator=(unsigned int) = delete;
+    Int3& operator=(unsigned long) = delete;
+    Int3& operator=(unsigned long long) = delete;
 
     VECTOR lower() {
         return value;
     }
 
-    DATA& operator=(const DATA &other) {
+    Int3& operator=(const Int3 &other) {
         if (this != &other) {
             value = other.value;
             value1 = other.value1;
@@ -79,12 +80,12 @@ public:
         return (bool)(value) || (bool)value1;
     }
 
-    friend std::ostream& operator<<(std::ostream &os, const DATA &si) {
+    friend std::ostream& operator<<(std::ostream &os, const Int3 &si) {
         std::cout << std::bitset<(sizeof(VECTOR)*8)>(si.value1) << "_" << std::bitset<(sizeof(VECTOR)*8)>(si.value);
         return os;
     }
 
-    const DATA& print(const std::string& text="") const {
+    const Int3& print(const std::string& text="") const {
         std::cout << text << *this << "\n";
         return *this;
     }
@@ -102,7 +103,7 @@ public:
         return ((value >> i) & 1) + ((value1 >> i) & 1)*2 + ((value2 >> i) & 1)*4;
     }
 
-    const DATA& set(int i, int val) {
+    const Int3& set(int i, int val) {
         if(sizeof(VECTOR)*8<=i || i<0)
             throw std::logic_error("out of of range");
         if(val<0 || val>7)
@@ -130,7 +131,7 @@ public:
         return get(i);
     }
     
-    DATA& operator[](std::pair<int, int> p) {
+    Int3& operator[](std::pair<int, int> p) {
         set(p.first, p.second);
         return *this;
     }
@@ -145,34 +146,30 @@ public:
         return count;
     }
     
-    DATA operator~() const {
-        return DATA(~(value | value1 | value2));
+    Int3 operator~() const {
+        return Int3(~(value | value1 | value2));
     }
-    DATA operator!=(const DATA &other) const {
-        return DATA((other.value^value) | (other.value1^value1) | (other.value2^value2));
+    
+    Int3 operator!=(const Int3 &other) const {
+        return Int3((other.value^value) | (other.value1^value1) | (other.value2^value2));
     }
-    DATA operator*(const DATA &other) const {
-        return DATA(other.value&value, 
+
+    Int3 operator*(const Int3 &other) const {
+        return Int3(other.value&value, 
                     (other.value1&value) | (other.value&value1),
                     (other.value2&value) | (other.value&value2) | (other.value1&value1));
     }
-    DATA operator+(const DATA &other) const {
+
+    Int3 operator+(const Int3 &other) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
-        return DATA(other.value^value, 
+        return Int3(other.value^value, 
                     other.value1^value1^carry,
                     other.value2^value2^carry1
                     );
     }
-    DATA operator>>(const int other) const {
-        assert_simple();
-        return DATA(value>>other);
-    }
-    DATA operator<<(const int other) const {
-        assert_simple();
-        return DATA(value<<other);
-    }
-    const DATA& operator+=(const DATA &other) {
+
+    const Int3& operator+=(const Int3 &other) {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         value = other.value^value;
@@ -180,21 +177,29 @@ public:
         value2 = other.value2^value2^carry1;
         return *this;
     }
-    const DATA& operator*=(const DATA &other) {
+    const Int3& operator*=(const Int3 &other) {
         value2 = (other.value2&value) | (other.value&value2) | (other.value1&value1);
         value1 = (other.value1&value) | (other.value&value1);
         value = other.value&value; 
         return *this;
     }
+
+    const double sup() {
+        return 7;
+    }
+
+    const double inf() {
+        return 0;
+    }
 };
 
 
-DATA vec2data(const std::vector<int>& binaryVector) {
+Int3 vec2data(const std::vector<int>& binaryVector) {
     VECTOR result = 0;
     for (int i = 0; i < binaryVector.size(); ++i) 
         if (binaryVector[i]) 
             result |= (1 << i);
-    return DATA(result);
+    return Int3(result);
 }
 
 VECTOR inline randvec(int llr) {
@@ -204,8 +209,9 @@ VECTOR inline randvec(int llr) {
     return ret;
 }
 
-DATA inline rand(int llr) {
-    return DATA(randvec(llr), randvec(llr), randvec(llr));
+Int3 inline rand(int llr) {
+    return Int3(randvec(llr), randvec(llr), randvec(llr));
+}
 }
 
-#endif // DATA_H
+#endif // Int3_H

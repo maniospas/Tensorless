@@ -23,6 +23,8 @@ limitations under the License.
 #include <cstdlib>
 #include <random>
 
+namespace tensorless {
+
 #ifdef __SIZEOF_INT128__ 
     #define VECTOR __int128 
 #else
@@ -38,4 +40,5 @@ inline VECTOR lrand() {
     return distribution(generator);
 }
 
+}
 #endif  // VECUTILS_H
