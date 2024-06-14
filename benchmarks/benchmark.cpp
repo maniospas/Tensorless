@@ -1,5 +1,5 @@
-#include "cpunn/types/float5.cpp"
-#include "cpunn/signed.cpp"
+#include "../cpunn/types/float5.cpp"
+#include "../cpunn/signed.cpp"
 #include <cmath>
 #include <chrono>
 

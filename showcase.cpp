@@ -2,8 +2,6 @@
 #include "cpunn/types/float4.cpp"
 #include "cpunn/types/float3.cpp"
 #include "cpunn/signed.cpp"
-#include <cmath>
-#include <chrono>
 
 
 
