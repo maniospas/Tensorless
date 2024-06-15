@@ -31,11 +31,35 @@ class Signed {
 private:
     VECTOR isNegative;
     Number value;
-    Signed(Number value, VECTOR isNegative) : value(value), isNegative(isNegative) {}
+    Signed(Number value, VECTOR isNeg) : value(value), isNegative(isNeg) {}
 public:
+    static Signed<Number> random() {return Signed(Number::random(), lrand());}
+    static Signed<Number> broadcast(double value) {
+        if(value<0)
+            return Signed(Number::broadcast(-value).twosComplement(), ~(VECTOR)0);
+        return Signed(Number::broadcast(value), 0);
+    }
+
     Signed<Number> zerolike() {
         return Signed();
     }
+
+    Signed<Number>& operator=(const Signed<Number>& other) {
+        if (this != &other) {
+            this->value = other.value;
+            this->isNegative = other.isNegative;
+        }
+        return *this;
+    }
+
+    volatile Signed<Number>& operator=(const Signed<Number>& other) volatile {
+        if (this != &other) {
+            this->value = other.value;
+            this->isNegative = other.isNegative;
+        }
+        return *this;
+    }
+
 
     Signed(): isNegative(0) {}
 
@@ -53,12 +77,16 @@ public:
         value = value.twosComplement(isNegative);
     }
 
-    const double sup() {
-        return value.sup();
+    static const double sup() {
+        return Number::sup();
     }
 
-    const double inf() {
-        return -value.sup();
+    static const double inf() {
+        return -Number::sup();
+    }
+
+    const double sum() {
+        return value.sum(~isNegative) - value.twosComplement(isNegative).sum(isNegative);
     }
 
     const double get(int i) {
@@ -69,7 +97,7 @@ public:
 
     const double get(int i) const {
         if((isNegative >> i) & 1)
-            return -value.get(i);
+            return -value.twosComplement(isNegative).get(i);
         return value.get(i);
     }
 
@@ -78,11 +106,13 @@ public:
         if(val<0) {
             value.set(i, -val);
             value = value.twosComplement(applyNegative);
+            #pragma omp atomic
             isNegative |= applyNegative;
         }
         else {
-            isNegative &= ~applyNegative;
             value.set(i, val);
+            #pragma omp atomic
+            isNegative &= ~applyNegative;
         }
         return *this;
     }
@@ -119,20 +149,30 @@ public:
 
         // detect overflow
         VECTOR negCarry = (isNegative & other.isNegative) | (neg & (isNegative ^ other.isNegative));
-        if(negCarry ^ neg)
+
+        #ifdef DEBUG_OVERFLOWS
+        if(negCarry ^ neg) 
             throw std::logic_error("arithmetic overflow");
+        #endif
 
         return Signed(result, neg);
     }
 
     
     Signed<Number> operator-(const Signed<Number> &other) const {
-        auto negatedOther = Signed(other.value.twosComplement(other.isNegative), ~other.isNegative);
+        std::cout << other.value << "\n";
+        std::cout << other.value.twosComplement() << "\n";
+        auto negatedOther = Signed(other.value.twosComplement(),
+                                    ~other.isNegative);
+        std::cout << negatedOther.value << "\n";
         return *this+negatedOther;
     }
 
     
     Signed<Number> operator*(const Signed<Number> &other) const {
+        Number ret = value.twosComplement(isNegative)*other.value.twosComplement(other.isNegative);
+        VECTOR neg = isNegative ^ other.isNegative;
+        return Signed<Number>(ret.twosComplement(neg), neg);
     }
 
 };

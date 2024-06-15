@@ -18,9 +18,21 @@ limitations under the License.
 #define TENSORLESS_TYPES_H
 
 #include "vecutils.h"
+#include "raw/int2.h"
+#include "raw/int3.h"
 #include "raw/float3.h"
 #include "raw/float4.h"
 #include "raw/float5.h"
+#include "raw/float8.h"
 #include "signed.h"
+
+namespace tensorless {
+    typedef Signed<Int2> SInt2;
+    typedef Signed<Int3> SInt3;
+    typedef Signed<Float3> SFloat3;
+    typedef Signed<Float4> SFloat4;
+    typedef Signed<Float5> SFloat5;
+    typedef Signed<Float8> SFloat8;
+}
 
 #endif  // TENSORLESS_TYPES_H

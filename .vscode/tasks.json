@@ -8,7 +8,9 @@
                 "-fdiagnostics-color=always",
                 "-g",
                 "${file}",
+                "-fopenmp",
                 "-O2",
+                "-finline-limit=400",
                 "-o",
                 "${fileDirname}\\${fileBasenameNoExtension}.exe"
             ],

@@ -34,6 +34,24 @@ private:
     explicit Float3(VECTOR v, VECTOR v1, VECTOR v2) : value(v), value1(v1), value2(v2) {}
 public:
     static Float3 random() {return Float3(lrand(), lrand(), lrand());}
+    static Float3 broadcast(double val) {
+        if(val<0 || val>2)
+            throw std::logic_error("can only set values in range [0,2]");
+        VECTOR value2 = 0;
+        VECTOR value1 = 0;
+        VECTOR value = 0;
+        if(val>=1) {
+            value2 = ~value2;
+            val -= 1;
+        }
+        if(val>=0.5) {
+            value1 = ~value1;
+            val -= 0.5;
+        }
+        if(val>=0.25/2)
+            value = ~value;
+        return Float3(value, value1, value2);
+    }
 
     Float3(const std::vector<double>& vec) : value(0), value1(0), value2(0) {
         for (int i = 0; i < vec.size(); ++i) 
@@ -80,6 +98,24 @@ public:
         return (a >> i) & 1;
     }
 
+    const double max() {
+        double ret = 0;
+        if(value2) {
+            VECTOR v1 = value1 & value2;
+            return ret;
+        }
+        
+        
+    }
+
+    const double sum() {
+        return bitcount(value)/4.0 + bitcount(value1)/2.0 + bitcount(value2);
+    }
+
+    const double sum(VECTOR mask) {
+        return bitcount(value&mask)/4.0 + bitcount(value1&mask)/2.0 + bitcount(value2&mask);
+    }
+
     const double get(int i) {
         return ((value >> i) & 1)/4.0 + ((value1 >> i) & 1)/2.0 + ((value2 >> i) & 1);
     }
@@ -91,7 +127,7 @@ public:
     const Float3& set(int i, double val) {
         if(size()<=i || i<0)
             throw std::logic_error("out of of range");
-        if(val<0 || val>7)
+        if(val<0 || val>2)
             throw std::logic_error("can only set values in range [0,2]");
         if(val>=1) {
             value2 |= ONEHOT(i);
@@ -125,26 +161,21 @@ public:
         return *this;
     }
 
-    int countNonZeros() { // WARNING: this is not parallelized
+    int countNonZeros() { 
         VECTOR n = value | value1 | value2;
-        int count = 0;
-        while (n) {
-            if(n & 1)
-                ++count;
-            n >>= 1;
-        }
-        return count;
+        return bitcount(n);
     }
 
     Float3 twosComplement(VECTOR mask) const {
-        return Float3(mask&~value | (~mask&value), 
-                      mask&~value1 | (~mask&value1),
-                      mask&~value2 | (~mask&value2)
-        ) + Float3(mask,0,0);
+        VECTOR notmask = ~mask;
+        return Float3(mask&~value | (notmask&value), 
+                      mask&~value1 | (notmask&value1),
+                      mask&~value2 | (notmask&value2)
+        ).addWithoutCarry(Float3(mask,0,0));
     }
     
     Float3 twosComplement() const {
-        return Float3(~value, value1, value2) + Float3(value|~value,0,0);
+        return Float3(~value, ~value1, ~value2).addWithoutCarry(Float3(~(VECTOR)0,0,0));
     }
     
     Float3 operator~() const {
@@ -163,6 +194,15 @@ public:
         return ret;
     }
 
+    Float3 addWithoutCarry(const Float3 &other) const {
+        VECTOR carry = other.value&value;
+        VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
+        return Float3(other.value^value, 
+                    other.value1^value1^carry,
+                    other.value2^value2^carry1
+                    );
+    }
+
     Float3 addWithCarry(const Float3 &other, VECTOR &lastcarry) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
@@ -176,6 +216,13 @@ public:
     Float3 operator+(const Float3 &other) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
+        
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
+        if(lastcarry)
+            throw std::logic_error("arithmetic overflow");
+        #endif
+
         return Float3(other.value^value, 
                     other.value1^value1^carry,
                     other.value2^value2^carry1
@@ -185,6 +232,13 @@ public:
     const Float3& operator+=(const Float3 &other) {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
+        
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
+        if(lastcarry)
+            throw std::logic_error("arithmetic overflow");
+        #endif
+
         value = other.value^value;
         value1 = other.value1^value1^carry;
         value2 = other.value2^value2^carry1;
@@ -202,11 +256,11 @@ public:
         return *this;
     }
 
-    const double sup() {
+    static double sup() {
         return 1.75;
     }
 
-    const double inf() {
+    static double inf() {
         return 0;
     }
 };

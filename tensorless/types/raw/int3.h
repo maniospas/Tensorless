@@ -34,6 +34,10 @@ private:
     explicit Int3(VECTOR v, VECTOR v1, VECTOR v2) : value(v), value1(v1), value2(v2) {}
 public:
     static Int3 random() {return Int3(lrand(), lrand(), lrand());}
+    static Int3 broadcast(double value) {
+        int val = (int)value;
+        return Int3(val&1?~(VECTOR)0:0, val&2?~(VECTOR)0:0, val&4?~(VECTOR)0:0);
+    }
 
     Int3(const std::vector<int>& vec) : value(0), value1(0), value2(0) {
         for (int i = 0; i < vec.size(); ++i) 
@@ -58,22 +62,15 @@ public:
         return *this;
     }
 
-    void assert_simple() const {
-        if(value1 || value2) 
-            throw std::logic_error("cannot typecast complicated data");
-    }
-
-    explicit operator VECTOR() const {
-        assert_simple();
-        return value;
-    }
-    
     explicit operator bool() const {
-        return (bool)(value) || (bool)value1;
+        return (bool)value || (bool)value1 || (bool)value2;
     }
 
     friend std::ostream& operator<<(std::ostream &os, const Int3 &si) {
-        std::cout << std::bitset<(sizeof(VECTOR)*8)>(si.value1) << "_" << std::bitset<(sizeof(VECTOR)*8)>(si.value);
+        os << "[" << si.get(0);
+        for(int i=1;i<si.size();i++)
+            os << "," << si.get(i);
+        os << "]";
         return os;
     }
 
@@ -85,6 +82,14 @@ public:
     const bool isZeroAt(int i) {
         VECTOR a = value | value1 | value2;
         return (a >> i) & 1;
+    }
+
+    const int sum() {
+        return bitcount(value) + bitcount(value1)*2 + bitcount(value2)*4;
+    }
+
+    const int sum(VECTOR mask) {
+        return bitcount(value&mask) + bitcount(value1&mask)*2 + bitcount(value2&mask)*4;
     }
 
     const int get(int i) {
@@ -100,18 +105,30 @@ public:
             throw std::logic_error("out of of range");
         if(val<0 || val>7)
             throw std::logic_error("can only set values in range [0,7]");
-        if(val&1)
+        if(val&1) {
+            #pragma omp atomic
             value |= ONEHOT(i);
-        else
+        }
+        else {
+            #pragma omp atomic
             value &= ~ONEHOT(i);
-        if(val&2)
+        }
+        if(val&2) {
+            #pragma omp atomic
             value1 |= ONEHOT(i);
-        else
+        }
+        else {
+            #pragma omp atomic
             value1 &= ~ONEHOT(i);
-        if(val&4)
+        }
+        if(val&4) {
+            #pragma omp atomic
             value2 |= ONEHOT(i);
-        else
+        }
+        else {
+            #pragma omp atomic
             value2 &= ~ONEHOT(i);
+        }
         return *this;
     }
 
@@ -128,14 +145,9 @@ public:
         return *this;
     }
 
-    int countNonZeros() { // WARNING: this is not parallelized
+    int countNonZeros() { 
         VECTOR n = value | value1 | value2;
-        VECTOR count = 0;
-        while (n) {
-            count += n & 1; // Add the least significant bit
-            n >>= 1;        // Shift the number right by 1 bit
-        }
-        return count;
+        return bitcount(n);
     }
     
     Int3 operator~() const {
@@ -150,6 +162,27 @@ public:
         return Int3(other.value&value, 
                     (other.value1&value) | (other.value&value1),
                     (other.value2&value) | (other.value&value2) | (other.value1&value1));
+    }
+ 
+    Int3 twosComplement(VECTOR mask) const {
+        VECTOR notmask = ~mask;
+        return Int3(mask&~value | (notmask&value), 
+                      mask&~value1 | (notmask&value1),
+                      mask&~value2 | (notmask&value2)
+        ).addWithoutCarry(Int3(mask,0,0));
+    }
+    
+    Int3 twosComplement() const {
+        return Int3(~value, ~value1, ~value2).addWithoutCarry(Int3(~(VECTOR)0,0,0));
+    }
+
+    Int3 addWithoutCarry(const Int3 &other) const {
+        VECTOR carry = other.value&value;
+        VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
+        return Int3(other.value^value, 
+                    other.value1^value1^carry,
+                    other.value2^value2^carry1
+                    );
     }
 
     Int3 addWithCarry(const Int3 &other, VECTOR &lastcarry) const {
@@ -187,11 +220,11 @@ public:
         return *this;
     }
 
-    const double sup() {
+    static double sup() {
         return 7;
     }
 
-    const double inf() {
+    static double inf() {
         return 0;
     }
 };

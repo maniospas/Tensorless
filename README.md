@@ -5,6 +5,8 @@
 **Author:** Emmanouil (Manios) Krasanakis<br>
 **License:** Apache 2.0
 
+:warning: The following compilation parameters need to be provided: `-O2 -fopenmp` and, if `Float8` or its derivative types are used, `-finline-limit=400` or larger.
+
 
 ## :fire: CPU vectorization
 

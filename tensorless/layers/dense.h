@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 
-#ifndef VECTORLESS_DENSE_H
-#define VECTORLESS_DENSE_H
+#ifndef TENSORLESS_DENSE_H
+#define TENSORLESS_DENSE_H
 
 #include <iostream>
 #include <vector>
@@ -24,7 +24,8 @@ limitations under the License.
 #include <bitset>
 #include <climits>
 #include <cmath>
-#include "types/all.h"
+#include "neural.h"
+#include "../types/all.h"
 
 namespace tensorless {
 
@@ -38,51 +39,45 @@ private:
 protected:
     Tensor in; // keeps track of last input
     Tensor out; // keeps track of last output
+    std::vector<Tensor> activations;
 
 public:
-    Dense(int ins, int outs, int broadcast=1) : ins(ins), outs(outs) {
+    Dense(int ins, int outs) : ins(ins), outs(outs) {
         for (int i=0; i<outs;++i) 
             weights.push_back(Tensor::random());
     }
 
     friend std::ostream& operator<<(std::ostream &os, const Dense *si) {
-        os << "Bernouli layer";
+        os << "Layer";
         os << "\n  Inputs  " << si->ins;
         os << "\n  Outputs " << si->outs;
-        os << "\n  Weights";
+        /*os << "\n  Weights";
         for (int i=0;i<si->outs;++i) 
-            os << "\n   " << si->weights[i];
+            os << "\n   " << si->weights[i];*/
         os << "\n";
         return os;
     }
 
-    Tensor forward(Tensor input) {
+    virtual Tensor forward(const Tensor& input) {
         in = input; 
-        //for(int i=1;i<broadcast;++i) 
-        //    in += input << (ins*i);
-
         out = Tensor();
+        #pragma omp parallel for
         for (int i=0;i<outs;++i) {
-            Tensor weightedIns = in*weights[i]; // *Tensor:random();
-            if(weightedIns)  // if any bit different than zero
-                out += Tensor(1 << i);
+            Tensor weightedIns = input*weights[i]; 
+            double sum = weightedIns.sum()/ins*8;
+            if(sum>1)
+                sum = 1;
+            if(sum>0) {// relu
+                out.set(i, sum);
+            }
         }
         return out;
     }
 
-    Tensor backward(Tensor error) {
-        Tensor back = Tensor();
-        Tensor mask = Tensor::random();
-        Tensor notmask = ~mask; // is boolean
-        mask = ~mask; // now is boolean
-        for (int i=0;i<outs;++i) 
-            if(!error.isZeroAt(i)) {
-                back += weights[i];
-                weights[i] = (notin*mask) + (weights[i]*notmask);
-            }
-        return DATA(back);
+    virtual Tensor backward(const Tensor &error) {
+        return in;
     }
 };
 
 }
-#endif  // VECTORLESS_DENSE_H
+#endif  // TENSORLESS_DENSE_H

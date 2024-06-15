@@ -36,8 +36,36 @@ private:
     explicit Float5(VECTOR v, VECTOR v1, VECTOR v2, VECTOR v3, VECTOR v4) : value(v), value1(v1), value2(v2), value3(v3), value4(v4) {}
 public:
     static Float5 random() {return Float5(lrand(), lrand(), lrand(), lrand(), lrand());}
+    static Float5 broadcast(double val) {
+        if(val<0 || val>2)
+            throw std::logic_error("can only set values in range [0,2]");
+        VECTOR value4 = 0;
+        VECTOR value3 = 0;
+        VECTOR value2 = 0;
+        VECTOR value1 = 0;
+        VECTOR value = 0;
+        if(val>=1) {
+            value4 = ~value4;
+            val -= 1;
+        }
+        if(val>=0.5) {
+            value3 = ~value3;
+            val -= 0.5;
+        }
+        if(val>=0.25) {
+            value2 = ~value2;
+            val -= 0.25;
+        }
+        if(val>=0.125) {
+            value1 = ~value1;
+            val -= 0.125;
+        }
+        if(val>=0.0625)
+            value = ~value;
+        return Float5(value, value1, value2, value3, value4);
+    }
 
-    Float5(const std::vector<double>& vec) : value(0), value1(0), value2(0), value3(0) {
+    Float5(const std::vector<double>& vec) : value(0), value1(0), value2(0), value3(0), value4(0) {
         for (int i = 0; i < vec.size(); ++i) 
             if (vec[i]) 
                 set(i, vec[i]);
@@ -76,12 +104,20 @@ public:
     }
 
     const int size() const {
-        return sizeof(VECTOR)*8;
+        return VECTOR_SIZE;
     }
 
     const bool isZeroAt(int i) {
         VECTOR a = value | value1 | value2 | value3 | value4;
         return (a >> i) & 1;
+    }
+
+    const double sum() {
+        return bitcount(value)/16.0 + bitcount(value1)/8.0 + bitcount(value2) /4.0 + bitcount(value3)/2.0 + bitcount(value4);
+    }
+
+    const double sum(VECTOR mask) {
+        return bitcount(value&mask)/16.0 + bitcount(value1&mask)/8.0 + bitcount(value2&mask) /4.0 + bitcount(value3&mask)/2.0 + bitcount(value4&mask);
     }
 
     const double get(int i) {
@@ -95,36 +131,52 @@ public:
     const Float5& set(int i, double val) {
         if(size()<=i || i<0)
             throw std::logic_error("out of of range");
-        if(val<0 || val>7)
+        if(val<0 || val>2)
             throw std::logic_error("can only set values in range [0,2]");
         if(val>=1) {
+            #pragma omp atomic
             value4 |= ONEHOT(i);
             val -= 1;
         }
-        else
+        else {
+            #pragma omp atomic
             value4 &= ~ONEHOT(i);
+        }
         if(val>=0.5) {
+            #pragma omp atomic
             value3 |= ONEHOT(i);
             val -= 0.5;
         }
-        else
+        else{
+            #pragma omp atomic
             value3 &= ~ONEHOT(i);
+        }
         if(val>=0.25){
+            #pragma omp atomic
             value2 |= ONEHOT(i);
             val -= 0.25;
         }
-        else
+        else {
+            #pragma omp atomic
             value2 &= ~ONEHOT(i);
+        }
         if(val>=0.125){
+            #pragma omp atomic
             value1 |= ONEHOT(i);
             val -= 0.125;
         }
-        else
+        else {
+            #pragma omp atomic
             value1 &= ~ONEHOT(i);
-        if(val>=0.0625/2)
+        }
+        if(val>=0.0625/2) {
+            #pragma omp atomic
             value |= ONEHOT(i);
-        else
+        }
+        else {
+            #pragma omp atomic
             value &= ~ONEHOT(i);
+        }
         return *this;
     }
 
@@ -141,15 +193,9 @@ public:
         return *this;
     }
 
-    int countNonZeros() { // WARNING: this is not parallelized
+    int countNonZeros() { 
         VECTOR n = value | value1 | value2 | value3 | value4;
-        int count = 0;
-        while (n) {
-            if(n & 1)
-                ++count;
-            n >>= 1;
-        }
-        return count;
+        return bitcount(n);
     }
     
     void debug() const {
@@ -179,6 +225,19 @@ public:
         return ret;
     }
 
+    Float5 addWithoutCarry(const Float5 &other) const {
+        VECTOR carry = other.value&value;
+        VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
+        VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
+        VECTOR carry3 = (value3 & other.value3) | (carry2 & (value3 ^ other.value3));
+        return Float5(other.value^value, 
+                    other.value1^value1^carry,
+                    other.value2^value2^carry1,
+                    other.value3^value3^carry2,
+                    other.value4^value4^carry3
+                    );
+    }
+
     Float5 addWithCarry(const Float5 &other, VECTOR &lastcarry) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
@@ -194,16 +253,17 @@ public:
     }
 
     Float5 twosComplement(VECTOR mask) const {
-        return Float5((mask&~value) | (~mask&value), 
-                      (mask&~value1) | (~mask&value1),
-                      (mask&~value2) | (~mask&value2),
-                      (mask&~value3) | (~mask&value3),
-                      (mask&~value4) | (~mask&value4)
-        ) + Float5(mask,0,0,0,0);
+        VECTOR notmask = ~mask;
+        return Float5((mask&~value) | (notmask&value), 
+                      (mask&~value1) | (notmask&value1),
+                      (mask&~value2) | (notmask&value2),
+                      (mask&~value3) | (notmask&value3),
+                      (mask&~value4) | (notmask&value4)
+        ).addWithoutCarry(Float5(mask,0,0,0,0));
     }
 
     Float5 twosComplement() const {
-        return Float5(~value, value1, value2, value3, value4) + Float5(value|~value,0,0,0,0);
+        return Float5(~value, ~value1, ~value2, ~value3, ~value4).addWithoutCarry(Float5(~(VECTOR)0,0,0,0,0));
     }
 
     Float5 operator+(const Float5 &other) const {
@@ -211,6 +271,13 @@ public:
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
         VECTOR carry3 = (value3 & other.value3) | (carry2 & (value3 ^ other.value3));
+
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = (value4 & other.value4) | (carry3 & (value4 ^ other.value4));
+        if(lastcarry) 
+            throw std::logic_error("arithmetic overflow");
+        #endif DEBUG_OVERFLOWS
+
         return Float5(other.value^value, 
                     other.value1^value1^carry,
                     other.value2^value2^carry1,
@@ -223,6 +290,13 @@ public:
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
         VECTOR carry3 = (value3 & other.value3) | (carry2 & (value3 ^ other.value3));
+        
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = (value4 & other.value4) | (carry3 & (value4 ^ other.value4));
+        if(lastcarry)
+            throw std::logic_error("arithmetic overflow");
+        #endif
+
         value = other.value^value;
         value1 = other.value1^value1^carry;
         value2 = other.value2^value2^carry1;
@@ -245,11 +319,11 @@ public:
         return *this;
     }
 
-    const double sup() {
+    static double sup() {
         return 1.9375;
     }
 
-    const double inf() {
+    static double inf() {
         return 0;
     }
 };
