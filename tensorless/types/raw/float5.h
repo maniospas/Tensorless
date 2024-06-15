@@ -35,25 +35,17 @@ private:
     VECTOR value4;
     explicit Float5(VECTOR v, VECTOR v1, VECTOR v2, VECTOR v3, VECTOR v4) : value(v), value1(v1), value2(v2), value3(v3), value4(v4) {}
 public:
+    static Float5 random() {return Float5(lrand(), lrand(), lrand(), lrand(), lrand());}
+
     Float5(const std::vector<double>& vec) : value(0), value1(0), value2(0), value3(0) {
         for (int i = 0; i < vec.size(); ++i) 
             if (vec[i]) 
                 set(i, vec[i]);
     }
+    
     Float5(const Float5 &other) : value(other.value), value1(other.value1), value2(other.value2), value3(other.value3), value4(other.value4) {}
+    
     Float5() : value(0), value1(0), value2(0), value3(0), value4(0) {}
-
-    Float5(double) = delete;
-    Float5(float) = delete;
-    Float5(unsigned int) = delete;
-
-    Float5& operator=(int) = delete;
-    Float5& operator=(double) = delete;
-    Float5& operator=(float) = delete;
-    Float5& operator=(long) = delete;
-    Float5& operator=(unsigned int) = delete;
-    Float5& operator=(unsigned long) = delete;
-    Float5& operator=(unsigned long long) = delete;
 
     Float5& operator=(const Float5 &other) {
         if (this != &other) {
@@ -101,6 +93,10 @@ public:
     }
 
     const Float5& set(int i, double val) {
+        if(size()<=i || i<0)
+            throw std::logic_error("out of of range");
+        if(val<0 || val>7)
+            throw std::logic_error("can only set values in range [0,2]");
         if(val>=1) {
             value4 |= ONEHOT(i);
             val -= 1;

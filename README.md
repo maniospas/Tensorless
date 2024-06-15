@@ -8,17 +8,19 @@
 
 ## :fire: CPU vectorization
 
-- No tensors: 6x 128bit numbers store 128x 6bit numbers.
+- No tensors under-the-hood: 6x 128bit numbers store 128x 6bit numbers.
 - No SIMD-specific programming: get parallelization everwhere.
-- Ready-to-use neural componetns.
+- Ready-to-use neural components.
 - Copy-paste header installation.
 
 ## :rocket: Quickstart
 
-Always compile this framework with the O2 or O3 flag.
+Compile with the O2 or O3 flag for fast execution.
 
 ```cpp
 #include "tensorless/types/all.h"
+
+using namespace tensorless;
 
 int main() {
     int pos0 = 0;

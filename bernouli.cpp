@@ -1,4 +1,4 @@
-#include "tensorless/tensorless.h"
+#include "tensorless/dense.h"
 #include <cmath>
 #include <chrono>
 

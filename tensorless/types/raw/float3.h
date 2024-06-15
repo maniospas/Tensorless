@@ -33,25 +33,17 @@ private:
     VECTOR value2;
     explicit Float3(VECTOR v, VECTOR v1, VECTOR v2) : value(v), value1(v1), value2(v2) {}
 public:
+    static Float3 random() {return Float3(lrand(), lrand(), lrand());}
+
     Float3(const std::vector<double>& vec) : value(0), value1(0), value2(0) {
         for (int i = 0; i < vec.size(); ++i) 
             if (vec[i]) 
                 set(i, vec[i]);
     }
+    
     Float3(const Float3 &other) : value(other.value), value1(other.value1), value2(other.value2) {}
+    
     Float3() : value(0), value1(0), value2(0) {}
-
-    Float3(double) = delete;
-    Float3(float) = delete;
-    Float3(unsigned int) = delete;
-
-    Float3& operator=(int) = delete;
-    Float3& operator=(double) = delete;
-    Float3& operator=(float) = delete;
-    Float3& operator=(long) = delete;
-    Float3& operator=(unsigned int) = delete;
-    Float3& operator=(unsigned long) = delete;
-    Float3& operator=(unsigned long long) = delete;
 
     Float3& operator=(const Float3 &other) {
         if (this != &other) {
@@ -97,6 +89,10 @@ public:
     }
 
     const Float3& set(int i, double val) {
+        if(size()<=i || i<0)
+            throw std::logic_error("out of of range");
+        if(val<0 || val>7)
+            throw std::logic_error("can only set values in range [0,2]");
         if(val>=1) {
             value2 |= ONEHOT(i);
             val -= 1;

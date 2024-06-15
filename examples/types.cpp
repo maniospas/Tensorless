@@ -1,4 +1,4 @@
-#include "tensorless/types/all.h"
+#include "../tensorless/types/all.h"
 
 int main() {
     int pos0 = 0;

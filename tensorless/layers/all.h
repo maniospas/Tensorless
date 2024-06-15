@@ -14,13 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#ifndef TENSORLESS_TYPES_H
-#define TENSORLESS_TYPES_H
+#ifndef TENSORLESS_LAYERS_H
+#define TENSORLESS_LAYERS_H
 
-#include "vecutils.h"
-#include "raw/float3.h"
-#include "raw/float4.h"
-#include "raw/float5.h"
-#include "signed.h"
+#include "dense.h"
 
-#endif  // TENSORLESS_TYPES_H
+#endif  // TENSORLESS_LAYERS_H

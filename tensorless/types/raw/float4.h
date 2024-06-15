@@ -36,25 +36,17 @@ private:
     explicit Float4(VECTOR v, VECTOR v1, VECTOR v2, VECTOR v3) : value(v), value1(v1), value2(v2), value3(v3) {}
 
 public:
+    static Float4 random() {return Float4(lrand(), lrand(), lrand(), lrand());}
+
     Float4(const std::vector<double>& vec) : value(0), value1(0), value2(0), value3(0) {
         for (int i = 0; i < vec.size(); ++i) 
             if (vec[i]) 
                 set(i, vec[i]);
     }
+    
     Float4(const Float4 &other) : value(other.value), value1(other.value1), value2(other.value2), value3(other.value3) {}
+    
     Float4() : value(0), value1(0), value2(0), value3(0) {}
-
-    Float4(double) = delete;
-    Float4(float) = delete;
-    Float4(unsigned int) = delete;
-
-    Float4& operator=(int) = delete;
-    Float4& operator=(double) = delete;
-    Float4& operator=(float) = delete;
-    Float4& operator=(long) = delete;
-    Float4& operator=(unsigned int) = delete;
-    Float4& operator=(unsigned long) = delete;
-    Float4& operator=(unsigned long long) = delete;
 
     Float4& operator=(const Float4 &other) {
         if (this != &other) {
@@ -101,6 +93,10 @@ public:
     }
 
     const Float4& set(int i, double val) {
+        if(size()<=i || i<0)
+            throw std::logic_error("out of of range");
+        if(val<0 || val>7)
+            throw std::logic_error("can only set values in range [0,2]");
         if(val>=1) {
             value3 |= ONEHOT(i);
             val -= 1;

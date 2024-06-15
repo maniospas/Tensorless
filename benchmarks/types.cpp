@@ -1,11 +1,13 @@
-#include "../tensorless/types/float5.cpp"
-#include "../tensorless/signed.cpp"
+#include "../tensorless/types/all.h"
 #include <cmath>
 #include <chrono>
 
-
+using namespace tensorless;
 
 int main() {
+    // TO SHOWCASE WORST-CASE SPEEDUPS (OPTIMIZATION IS TOO EFFICIENT FOR THE TENSORLESS BENCHMARK)
+    // THIS FILE MAY BE TESTED WITHOUT ANY OPTIMIZATION FLAGS
+
     long N = 1000000;
     
     auto data1 = Signed<Float5>();
