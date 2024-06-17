@@ -14,12 +14,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#ifndef TENSORLESS_LAYERS_H
-#define TENSORLESS_LAYERS_H
+
+#ifndef TENSORLESS_SGD_H
+#define TENSORLESS_SGD_H
+
 
 #include "neural.h"
-#include "layered.h"
-#include "dense.h"
-#include "sgd.h"
+#include "../types/all.h"
 
-#endif  // TENSORLESS_LAYERS_H
+
+#include <iostream>
+#include <vector>
+#include "neural.h"
+#include "../types/all.h"
+#include <cmath>
+
+namespace tensorless {
+
+template <typename Tensor>
+class SGD: public Optimizer<Tensor> {
+    virtual Tensor update(int identifier, Tensor grads, double lr_mult=1) {
+        return grads*Tensor::broadcast(lr_mult*0.01);
+    }
+};
+
+
+}
+#endif  // TENSORLESS_SGD_H

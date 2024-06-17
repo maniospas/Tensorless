@@ -19,11 +19,24 @@ limitations under the License.
 
 namespace tensorless {
 
+// forward declaration to be used by optimizer
+template <typename Tensor> 
+class Neural;
+
+// optimizer class
+template <typename Tensor>
+class Optimizer {
+public:
+    virtual Tensor update(int identifier, Tensor grads, double lr_mult=1) = 0;
+};
+
+// neural class
 template <typename Tensor>
 class Neural {
 public:
     virtual Tensor forward(const Tensor &input) = 0;
-    virtual Tensor backward(const Tensor &error) = 0;
+    virtual Tensor backward(const Tensor &error, Optimizer<Tensor> &optimizer) = 0;
+    virtual void zerograd() = 0;
     virtual std::string describe() const = 0;
 
     friend std::ostream& operator<<(std::ostream &os, const Neural &si) {

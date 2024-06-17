@@ -20,33 +20,22 @@ limitations under the License.
 
 #include <iostream>
 #include <vector>
-#include <random>
-#include <bitset>
-#include <climits>
-#include <cmath>
 #include "neural.h"
 #include "../types/all.h"
+#include <cmath>
 
 namespace tensorless {
 
-template <typename Tensor>
+template <typename Tensor, int ins, int outs>
 class Dense: public Neural<Tensor> {
 private:
-    int ins;
-    int outs;
-    std::vector<Tensor> weights;
-    std::vector<double> biases;
-
-protected:
-    Tensor in; // keeps track of last input
-    Tensor out; // keeps track of last output
-    std::vector<Tensor> grads; // keeps track of gradients
+    Tensor weights[outs];
+    double biases[outs];
 
 public:
-    Dense(int ins, int outs) : ins(ins), outs(outs) {
-        weights.reserve(outs);
+    Dense() {
         for (int i=0; i<outs;++i) 
-            weights.emplace(weights.end(), Tensor::random());
+            weights[i] = Tensor::random();
     }
 
     virtual std::string describe() const {
@@ -62,14 +51,15 @@ public:
     }
 
     virtual Tensor forward(const Tensor& input) {
-        in = input; 
-        out = Tensor();
+        Tensor in = input; 
+        Tensor out = Tensor();
+        double scale = 2*std::sqrt(12.0/outs);
         #pragma omp parallel for
         for (int i=0;i<outs;++i) {
             Tensor weightedIns = input*weights[i]; 
-            double sum = weightedIns.sum()/ins;
-            if(sum>1)
-                sum = 1;
+            double sum = (weightedIns.sum()+biases[i])*scale;
+            //if(sum>1)  // for SFloat8
+            //    sum = 1;
             if(sum>0) {// relu
                 #pragma omp critical 
                 {
@@ -80,15 +70,23 @@ public:
         return out;
     }
 
-    virtual Tensor backward(const Tensor &error) {
-        return in;
+    virtual Tensor backward(const Tensor &error, Optimizer<Tensor> &optimizer) {
+        Tensor err;
+        double scale = 2*std::sqrt(12.0/outs);
+        double invscale = 1./scale;
+        #pragma omp parallel for
+        for (int i=0;i<outs;++i) {
+            Tensor erri = weights[i]*error;
+            #pragma omp critical
+            {
+                err = err + erri;
+                weights[i] = weights[i] + optimizer.update(0, error, invscale);
+            }
+        }
+        return err;
     }
 
     virtual void zerograd() {
-        grads.clear();
-        grads.reserve(outs);
-        for(int i=0;i<outs;++i)
-            grads.emplace(grads.end());
     }
 };
 

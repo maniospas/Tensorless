@@ -36,10 +36,10 @@ private:
 public:
     static Dynamic<Number> random() {return Dynamic(Number::random(), 1);}  // 2.0/Number::sup()
     static Dynamic<Number> broadcast(double value) {
-        double scale = 1;//Number::sup()/2.0;
+        //double scale = Number::sup()/2.0;
         if(value<0)
-            return Dynamic(Number::broadcast(-scale), -value/scale);
-        return Dynamic(Number::broadcast(scale), value/scale);
+            return Dynamic(Number::broadcast(-1), -value);
+        return Dynamic(Number::broadcast(1), value);
     }
 
     static int num_params() {
@@ -111,12 +111,11 @@ public:
         if(absval<0)
             absval = -absval;
         
-        double scale = 1;//Number::sup()/2.0;
-        if(absval>mantisa*scale) {
-            double mult = mantisa*scale/absval;
+        if(absval>mantisa) {
+            double mult = mantisa/absval;
             value = value*Number::broadcast(mult);
-            mantisa = absval/scale;
-            value.set(i, val>0?(scale):(-scale));
+            mantisa = absval;
+            value.set(i, val>0?1:-1);
         }
         else
             value.set(i, val/mantisa);
@@ -142,9 +141,9 @@ public:
 
     friend std::ostream& operator<<(std::ostream &os, const Dynamic<Number> &si) {
         os << "[" << si.get(0);
-        for(int i=1;i<si.size();i++)
+        for(int i=1;i<10;i++)
             os << "," << si.get(i);
-        os << "]";
+        os << ", ... ]";
         return os;
     }
 

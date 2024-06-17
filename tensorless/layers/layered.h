@@ -56,11 +56,16 @@ public:
         return in;
     }
 
-    virtual Tensor backward(const Tensor &error) {
+    virtual Tensor backward(const Tensor &error, Optimizer<Tensor> &optimizer) {
         Tensor err = err;
         for(int i=layers.size()-1;i>=0;--i)
-            err = layers[i]->backward(err);
+            err = layers[i]->backward(err, optimizer);
         return err;
+    }
+
+    virtual void zerograd() {
+        for(const auto& layer : layers) 
+            layer->zerograd();
     }
 };
 
