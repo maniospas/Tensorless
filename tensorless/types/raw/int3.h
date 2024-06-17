@@ -39,6 +39,14 @@ public:
         return Int3(val&1?~(VECTOR)0:0, val&2?~(VECTOR)0:0, val&4?~(VECTOR)0:0);
     }
 
+    static int num_params() {
+        return 3;
+    }
+    
+    static int num_bits() {
+        return 3*VECTOR_SIZE;
+    }
+
     Int3(const std::vector<int>& vec) : value(0), value1(0), value2(0) {
         for (int i = 0; i < vec.size(); ++i) 
             if (vec[i]) 
@@ -164,7 +172,7 @@ public:
                     (other.value2&value) | (other.value&value2) | (other.value1&value1));
     }
  
-    Int3 twosComplement(VECTOR mask) const {
+    Int3 twosComplement(const VECTOR &mask) const {
         VECTOR notmask = ~mask;
         return Int3(mask&~value | (notmask&value), 
                       mask&~value1 | (notmask&value1),
@@ -174,6 +182,18 @@ public:
     
     Int3 twosComplement() const {
         return Int3(~value, ~value1, ~value2).addWithoutCarry(Int3(~(VECTOR)0,0,0));
+    }
+
+    Int3 twosComplementWithCarry(const VECTOR &mask, VECTOR &carry) const {
+        VECTOR notmask = ~mask;
+        return Int3(mask&~value | (notmask&value), 
+                      mask&~value1 | (notmask&value1),
+                      mask&~value2 | (notmask&value2)
+        ).addWithCarry(Int3(mask,0,0), carry);
+    }
+    
+    Int3 twosComplement(VECTOR &carry) const {
+        return Int3(~value, ~value1, ~value2).addWithCarry(Int3(~(VECTOR)0,0,0), carry);
     }
 
     Int3 addWithoutCarry(const Int3 &other) const {

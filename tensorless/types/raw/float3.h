@@ -33,7 +33,7 @@ private:
     VECTOR value2;
     explicit Float3(VECTOR v, VECTOR v1, VECTOR v2) : value(v), value1(v1), value2(v2) {}
 public:
-    static Float3 random() {return Float3(lrand(), lrand(), lrand());}
+    static Float3 random() {return Float3(lrand(), lrand(), 0);}
     static Float3 broadcast(double val) {
         if(val<0 || val>2)
             throw std::logic_error("can only set values in range [0,2]");
@@ -51,6 +51,14 @@ public:
         if(val>=0.25/2)
             value = ~value;
         return Float3(value, value1, value2);
+    }
+
+    static int num_params() {
+        return 3;
+    }
+
+    static int num_bits() {
+        return 3*VECTOR_SIZE;
     }
 
     Float3(const std::vector<double>& vec) : value(0), value1(0), value2(0) {
@@ -76,6 +84,18 @@ public:
         return (bool)(value) || (bool)value1 || (bool)value2;
     }
 
+    Float3 times2() {
+        #ifdef DEBUG_OVERFLOWS
+        if(value2)
+            throw std::logic_error("arithmetic overflow");
+        #endif
+        return Float3(0, value, value1);
+    }
+
+    Float3 half() {
+        return Float3(value1, value2, 0);
+    }
+
     friend std::ostream& operator<<(std::ostream &os, const Float3 &si) {
         os << "[" << si.get(0);
         for(int i=1;i<si.size();i++)
@@ -98,21 +118,29 @@ public:
         return (a >> i) & 1;
     }
 
-    const double max() {
+    const double absmax() const {
         double ret = 0;
+        VECTOR v1 = value1;
+        VECTOR v = value;
         if(value2) {
-            VECTOR v1 = value1 & value2;
-            return ret;
+            ret += 1;
+            v1 &= value2;
+            v &= value2;
         }
-        
-        
+        if(v1) {
+            ret += 0.5;
+            v &= v1;
+        }
+        if(v)
+            ret += 0.25;
+        return ret;
     }
 
-    const double sum() {
+    const double sum() const {
         return bitcount(value)/4.0 + bitcount(value1)/2.0 + bitcount(value2);
     }
 
-    const double sum(VECTOR mask) {
+    const double sum(VECTOR mask) const {
         return bitcount(value&mask)/4.0 + bitcount(value1&mask)/2.0 + bitcount(value2&mask);
     }
 
@@ -166,7 +194,7 @@ public:
         return bitcount(n);
     }
 
-    Float3 twosComplement(VECTOR mask) const {
+    Float3 twosComplement(const VECTOR &mask) const {
         VECTOR notmask = ~mask;
         return Float3(mask&~value | (notmask&value), 
                       mask&~value1 | (notmask&value1),
@@ -176,6 +204,18 @@ public:
     
     Float3 twosComplement() const {
         return Float3(~value, ~value1, ~value2).addWithoutCarry(Float3(~(VECTOR)0,0,0));
+    }
+
+    Float3 twosComplementWithCarry(const VECTOR &mask, VECTOR &carry) const {
+        VECTOR notmask = ~mask;
+        return Float3(mask&~value | (notmask&value), 
+                      mask&~value1 | (notmask&value1),
+                      mask&~value2 | (notmask&value2)
+        ).addWithCarry(Float3(mask,0,0), carry);
+    }
+    
+    Float3 twosComplement(VECTOR &carry) const {
+        return Float3(~value, ~value1, ~value2).addWithCarry(Float3(~(VECTOR)0,0,0), carry);
     }
     
     Float3 operator~() const {

@@ -31,13 +31,35 @@ class Signed {
 private:
     VECTOR isNegative;
     Number value;
-    Signed(Number value, VECTOR isNeg) : value(value), isNegative(isNeg) {}
+    Signed(const Number &value, const VECTOR &isNeg) : value(value), isNegative(isNeg) {}
 public:
-    static Signed<Number> random() {return Signed(Number::random(), lrand());}
+    static Signed<Number> random() {
+        VECTOR isNegative = lrand();
+        return Signed(Number::random(), 0).twosComplement(isNegative);
+    }
+
     static Signed<Number> broadcast(double value) {
         if(value<0)
-            return Signed(Number::broadcast(-value).twosComplement(), ~(VECTOR)0);
+            return Signed(Number::broadcast(-value), 0).twosComplement();
         return Signed(Number::broadcast(value), 0);
+    }
+
+    static int num_params() {
+        return 1+Number::num_params();
+    }
+
+    static int num_bits() {
+        return Number::num_bits() + VECTOR_SIZE;
+    }
+
+    Signed<Number> times2() const {
+        Number abs = value.twosComplement(isNegative);
+        return Signed(abs.times2().twosComplement(isNegative), isNegative);
+    }
+
+    Signed<Number> half() const {
+        Number abs = value.twosComplement(isNegative);
+        return Signed(abs.half().twosComplement(isNegative), isNegative);
     }
 
     Signed<Number> zerolike() {
@@ -51,15 +73,6 @@ public:
         }
         return *this;
     }
-
-    volatile Signed<Number>& operator=(const Signed<Number>& other) volatile {
-        if (this != &other) {
-            this->value = other.value;
-            this->isNegative = other.isNegative;
-        }
-        return *this;
-    }
-
 
     Signed(): isNegative(0) {}
 
@@ -85,8 +98,16 @@ public:
         return -Number::sup();
     }
 
-    const double sum() {
+    const double sum() const {
         return value.sum(~isNegative) - value.twosComplement(isNegative).sum(isNegative);
+    }
+
+    const double sum(VECTOR mask) const {
+        return value.sum(~isNegative&mask) - value.twosComplement(isNegative).sum(isNegative&mask);
+    }
+
+    const double absmax() const {
+        return value.twosComplement(isNegative).absmax();
     }
 
     const double get(int i) {
@@ -136,39 +157,48 @@ public:
 
     friend std::ostream& operator<<(std::ostream &os, const Signed<Number> &si) {
         os << "[" << si.get(0);
-        for(int i=1;i<si.size();i++)
+        for(int i=1;i<10;i++)
             os << "," << si.get(i);
-        os << "]";
+        os << ", ... ]";
         return os;
     }
 
     Signed<Number> operator+(const Signed<Number> &other) const {
-        VECTOR neg;
-        Number result = value.addWithCarry(other.value, neg);
-        neg = isNegative^other.isNegative^neg;
+        VECTOR carryOut;
+        Number result = value.addWithCarry(other.value, carryOut);
+        VECTOR finalSign = isNegative ^ other.isNegative ^ carryOut;
 
-        // detect overflow
-        VECTOR negCarry = (isNegative & other.isNegative) | (neg & (isNegative ^ other.isNegative));
-
+        // Detect overflow
         #ifdef DEBUG_OVERFLOWS
-        if(negCarry ^ neg) 
+        
+        // Compute final sign after addition
+        //VECTOR finalSign = (isNegative & other.isNegative) | (~carryOut & signChange);
+        //VECTOR overflow = (isNegative & other.isNegative) | (carryOut & (isNegative ^ other.isNegative));
+
+        if (finalSign ^ carryOut) {
             throw std::logic_error("arithmetic overflow");
+        }
         #endif
 
-        return Signed(result, neg);
+        return Signed(result, finalSign);
     }
 
+    Signed<Number> twosComplement() const {
+        VECTOR negative;
+        Number complement = value.twosComplementWithCarry(negative);
+        return Signed(complement, negative ^ ~isNegative);
+    }
+
+    Signed<Number> twosComplement(const VECTOR &mask) const {
+        VECTOR negative;
+        Number complement = value.twosComplementWithCarry(mask, negative);
+        return Signed(complement, ((negative ^ ~isNegative)&mask) | (isNegative&~mask) );
+    }
     
     Signed<Number> operator-(const Signed<Number> &other) const {
-        std::cout << other.value << "\n";
-        std::cout << other.value.twosComplement() << "\n";
-        auto negatedOther = Signed(other.value.twosComplement(),
-                                    ~other.isNegative);
-        std::cout << negatedOther.value << "\n";
-        return *this+negatedOther;
+        return *this+other.twosComplement();
     }
 
-    
     Signed<Number> operator*(const Signed<Number> &other) const {
         Number ret = value.twosComplement(isNegative)*other.value.twosComplement(other.isNegative);
         VECTOR neg = isNegative ^ other.isNegative;

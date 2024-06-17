@@ -25,6 +25,7 @@ limitations under the License.
 #include "raw/float5.h"
 #include "raw/float8.h"
 #include "signed.h"
+#include "dynamic.h"
 
 namespace tensorless {
     typedef Signed<Int2> SInt2;
@@ -33,6 +34,18 @@ namespace tensorless {
     typedef Signed<Float4> SFloat4;
     typedef Signed<Float5> SFloat5;
     typedef Signed<Float8> SFloat8;
+
+    typedef Dynamic<Int2> DInt2;
+    typedef Dynamic<Int3> DInt3;
+    typedef Dynamic<Float3> DFloat3;
+    typedef Dynamic<Float4> DFloat4;
+    typedef Dynamic<Float5> DFloat5;
+    typedef Dynamic<Float8> DFloat8;
+
+    typedef Dynamic<SFloat3> float3;
+    typedef Dynamic<SFloat4> float4;
+    typedef Dynamic<SFloat5> float5;
+    typedef Dynamic<SFloat8> float8;
 }
 
 #endif  // TENSORLESS_TYPES_H

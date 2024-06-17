@@ -1,11 +1,22 @@
 #include "../tensorless/types/all.h"
-#include "../tensorless/layers/dense.h"
+#include "../tensorless/layers/all.h"
+#include <memory>
 
-#define TYPE tensorless::Signed<tensorless::Float5>
+using namespace tensorless;
+#define TYPE SFloat8
 
 int main() {
-    auto input = TYPE().set(0, 0.5);
-    auto layer = new tensorless::Dense<TYPE>(32, 32);
-    auto out = layer->forward(input);
+    auto in = TYPE::random();
+    auto arch = Layered<TYPE>()
+                .add(std::make_shared<Dense<TYPE>>(64, 64))
+                .add(std::make_shared<Dense<TYPE>>(64, 64));
+    std::cout << arch << "\n";
+
+
+    auto out = arch.forward(in);
+    auto error = out-in;
+    arch.backward(out-in);
+
+    std::cout << in << "\n";
     std::cout << out << "\n";
 }

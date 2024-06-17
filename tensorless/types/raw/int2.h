@@ -38,6 +38,14 @@ public:
         return Int2(val&1?~(VECTOR)0:0, val&2?~(VECTOR)0:0);
     }
 
+    static int num_params() {
+        return 2;
+    }
+
+    static int num_bits() {
+        return 2*VECTOR_SIZE;
+    }
+
     Int2(const std::vector<int>& vec) : value(0), value1(0) {
         for (int i = 0; i < vec.size(); ++i) 
             if (vec[i]) 
@@ -159,7 +167,7 @@ public:
                     );
     }
  
-    Int2 twosComplement(VECTOR mask) const {
+    Int2 twosComplement(const VECTOR &mask) const {
         VECTOR notmask = ~mask;
         return Int2(mask&~value | (notmask&value), 
                       mask&~value1 | (notmask&value1)
@@ -168,6 +176,17 @@ public:
     
     Int2 twosComplement() const {
         return Int2(~value, ~value1).addWithoutCarry(Int2(~(VECTOR)0,0));
+    }
+
+    Int2 twosComplementWithCarry(const VECTOR &mask, VECTOR &carry) const {
+        VECTOR notmask = ~mask;
+        return Int2(mask&~value | (notmask&value), 
+                      mask&~value1 | (notmask&value1)
+        ).addWithCarry(Int2(mask,0), carry);
+    }
+    
+    Int2 twosComplement(VECTOR &carry) const {
+        return Int2(~value, ~value1).addWithCarry(Int2(~(VECTOR)0,0), carry);
     }
 
     Int2 addWithCarry(const Int2 &other, VECTOR &lastcarry) const {

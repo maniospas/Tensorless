@@ -17,6 +17,8 @@ limitations under the License.
 #ifndef TENSORLESS_LAYERS_H
 #define TENSORLESS_LAYERS_H
 
+#include "neural.h"
+#include "layered.h"
 #include "dense.h"
 
 #endif  // TENSORLESS_LAYERS_H

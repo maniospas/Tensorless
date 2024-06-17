@@ -1,23 +1,22 @@
 # Tensorless
 
-*Make the CPU behave like a GPU.*
+*Make the CPU behave like a GPU for quantized data.*
 
 **Author:** Emmanouil (Manios) Krasanakis<br>
+**Language:** C++<br>
 **License:** Apache 2.0
 
-:warning: The following compilation parameters need to be provided: `-O2 -fopenmp` and, if `Float8` or its derivative types are used, `-finline-limit=400` or larger.
+:warning: Mandatory compilation parameters: `-O2 -fopenmp` and, if `Float8` or its derivative types are used, `-finline-limit=400` or larger.
 
 
 ## :fire: CPU vectorization
 
 - No tensors under-the-hood: 6x 128bit numbers store 128x 6bit numbers.
-- No SIMD-specific programming: get parallelization everwhere.
+- Process a large number of numbers in the CPU without costly memory transfers.
 - Ready-to-use neural components.
 - Copy-paste header installation.
 
 ## :rocket: Quickstart
-
-Compile with the O2 or O3 flag for fast execution.
 
 ```cpp
 #include "tensorless/types/all.h"

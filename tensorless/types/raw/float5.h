@@ -35,7 +35,7 @@ private:
     VECTOR value4;
     explicit Float5(VECTOR v, VECTOR v1, VECTOR v2, VECTOR v3, VECTOR v4) : value(v), value1(v1), value2(v2), value3(v3), value4(v4) {}
 public:
-    static Float5 random() {return Float5(lrand(), lrand(), lrand(), lrand(), lrand());}
+    static Float5 random() {return Float5(lrand(), lrand(), lrand(), lrand(), 0);}
     static Float5 broadcast(double val) {
         if(val<0 || val>2)
             throw std::logic_error("can only set values in range [0,2]");
@@ -63,6 +63,13 @@ public:
         if(val>=0.0625)
             value = ~value;
         return Float5(value, value1, value2, value3, value4);
+    }
+    static int num_params() {
+        return 5;
+    }
+
+    static int num_bits() {
+        return 5*VECTOR_SIZE;
     }
 
     Float5(const std::vector<double>& vec) : value(0), value1(0), value2(0), value3(0), value4(0) {
@@ -107,16 +114,58 @@ public:
         return VECTOR_SIZE;
     }
 
+    Float5 times2() {
+        #ifdef DEBUG_OVERFLOWS
+        if(value4)
+            throw std::logic_error("arithmetic overflow");
+        #endif
+        return Float5(0, value, value1, value2, value3);
+    }
+
+    Float5 half() {
+        return Float5(value1, value2, value3, value4, 0);
+    }
+
     const bool isZeroAt(int i) {
         VECTOR a = value | value1 | value2 | value3 | value4;
         return (a >> i) & 1;
     }
 
-    const double sum() {
+    const double absmax() const {
+        double ret = 0;
+        VECTOR mask = 0;
+        if(value4) {
+            ret += 1;
+            mask = value4;
+        }
+        else 
+            mask = ~mask;
+        VECTOR v3 = value3 & mask;
+        if(v3) {
+            ret += 0.5;
+            mask = v3;
+        }
+        VECTOR v2 = value2 & mask;
+        if(v2) {
+            ret += 0.25;
+            mask = v2;
+        }
+        VECTOR v1 = value1 & mask;
+        VECTOR v = value;
+        if(v1) {
+            ret += 0.125;
+            v &= v1;
+        }
+        if(v)
+            ret += 0.0625;
+        return ret;
+    }
+
+    const double sum() const {
         return bitcount(value)/16.0 + bitcount(value1)/8.0 + bitcount(value2) /4.0 + bitcount(value3)/2.0 + bitcount(value4);
     }
 
-    const double sum(VECTOR mask) {
+    const double sum(VECTOR mask) const {
         return bitcount(value&mask)/16.0 + bitcount(value1&mask)/8.0 + bitcount(value2&mask) /4.0 + bitcount(value3&mask)/2.0 + bitcount(value4&mask);
     }
 
@@ -252,7 +301,7 @@ public:
                     );
     }
 
-    Float5 twosComplement(VECTOR mask) const {
+    Float5 twosComplement(const VECTOR &mask) const {
         VECTOR notmask = ~mask;
         return Float5((mask&~value) | (notmask&value), 
                       (mask&~value1) | (notmask&value1),
@@ -266,6 +315,20 @@ public:
         return Float5(~value, ~value1, ~value2, ~value3, ~value4).addWithoutCarry(Float5(~(VECTOR)0,0,0,0,0));
     }
 
+    Float5 twosComplementWithCarry(const VECTOR &mask, VECTOR &carry) const {
+        VECTOR notmask = ~mask;
+        return Float5((mask&~value) | (notmask&value), 
+                      (mask&~value1) | (notmask&value1),
+                      (mask&~value2) | (notmask&value2),
+                      (mask&~value3) | (notmask&value3),
+                      (mask&~value4) | (notmask&value4)
+        ).addWithCarry(Float5(mask,0,0,0,0), carry);
+    }
+
+    Float5 twosComplementWithCarry(VECTOR &carry) const {
+        return Float5(~value, ~value1, ~value2, ~value3, ~value4).addWithCarry(Float5(~(VECTOR)0,0,0,0,0), carry);
+    }
+
     Float5 operator+(const Float5 &other) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
@@ -276,7 +339,7 @@ public:
         VECTOR lastcarry = (value4 & other.value4) | (carry3 & (value4 ^ other.value4));
         if(lastcarry) 
             throw std::logic_error("arithmetic overflow");
-        #endif DEBUG_OVERFLOWS
+        #endif
 
         return Float5(other.value^value, 
                     other.value1^value1^carry,

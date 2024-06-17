@@ -39,7 +39,7 @@ private:
     explicit Float8(VECTOR v, VECTOR v1, VECTOR v2, VECTOR v3, VECTOR v4, VECTOR v5, VECTOR v6, VECTOR v7) : 
         value(v), value1(v1), value2(v2), value3(v3), value4(v4), value5(v5), value6(v6), value7(v7) {}
 public:
-    static Float8 random() {return Float8(lrand(), lrand(), lrand(), lrand(), lrand(), lrand(), lrand(), lrand());}
+    static Float8 random() {return Float8(lrand(), lrand(), lrand(), lrand(), lrand(), lrand(), lrand(), 0);}
     
     static Float8 broadcast(double val) {
         if(val<0 || val>2)
@@ -70,17 +70,17 @@ public:
         }
         if(val>=0.0625) {
             value3 = ~value3;
-            val -= 0.125;
+            val -= 0.0625;
         }
         if(val>=0.03125) {
             value2 = ~value2;
-            val -= 0.125;
+            val -= 0.03125;
         }
         if(val>=0.015625) {
             value1 = ~value1;
-            val -= 0.125;
+            val -= 0.015625;
         }
-        if(val>=0.0078125)
+        if(val>=0.0078125/2)
             value = ~value;
         return Float8(value, value1, value2, value3, value4, value5, value6, value7);
     }
@@ -110,6 +110,26 @@ public:
         }
         return *this;
     }
+
+    Float8 times2() const {
+        #ifdef DEBUG_OVERFLOWS
+        if(value7)
+            throw std::logic_error("arithmetic overflow");
+        #endif
+        return Float8(0, value, value1, value2, value3, value4, value5, value6);
+    }
+
+    Float8 half() const {
+        return Float8(value1, value2, value3, value4, value5, value6, value7, 0);
+    }
+
+    static int num_params() {
+        return 8;
+    }
+
+    static int num_bits() {
+        return 8*VECTOR_SIZE;
+    }
     
     explicit operator bool() const {
         return (bool)(value) || (bool)value1 || (bool)value2 || (bool)value3 || (bool)value4 || (bool)value5 || (bool)value6 || (bool)value7;
@@ -136,12 +156,60 @@ public:
         VECTOR a = value | value1 | value2 | value3 | value4 | value5 | value6 | value7;
         return (a >> i) & 1;
     }
+    
+    const double absmax() const {
+        double ret = 0;
+        VECTOR mask = 0;
+        if(value7) {
+            ret += 1;
+            mask = value7;
+        } 
+        else {
+            mask = ~mask;
+        }
+        VECTOR v6 = value6 & mask;
+        if(v6) {
+            ret += 0.5;
+            mask = v6;
+        }
+        VECTOR v5 = value5 & mask;
+        if(v5) {
+            ret += 0.25;
+            mask = v5;
+        }
+        VECTOR v4 = value4 & mask;
+        if(v4) {
+            ret += 0.125;
+            mask = v4;
+        }
+        VECTOR v3 = value3 & mask;
+        if(v3) {
+            ret += 0.0625;
+            mask = v3;
+        }
+        VECTOR v2 = value2 & mask;
+        if(v2) {
+            ret += 0.03125;
+            mask = v2;
+        }
+        VECTOR v1 = value1 & mask;
+        VECTOR v = value;
+        if(v1) {
+            ret += 0.015625;
+            v &= v1;
+        }
+        if(v) {
+            ret += 0.0078125;
+        }
+        return ret;
+    }
 
-    const double sum() {
+
+    const double sum() const {
         return bitcount(value)/128.0 + bitcount(value1)/64.0 + bitcount(value2)/32.0 + bitcount(value3)/16.0 + bitcount(value4)/8.0 + bitcount(value5) /4.0 + bitcount(value6)/2.0 + bitcount(value7);
     }
 
-    const double sum(VECTOR mask) {
+    const double sum(VECTOR mask) const {
         return bitcount(value&mask)/128.0 + bitcount(value1&mask)/64.0 + bitcount(value2&mask)/32.0 + bitcount(value3&mask)/16.0 + bitcount(value4&mask)/8.0 + bitcount(value5&mask) /4.0 + bitcount(value6&mask)/2.0 + bitcount(value7&mask);
     }
 
@@ -269,6 +337,7 @@ public:
         ret += Float8(value2&other.value5, value2&other.value6, value2&other.value7, 0, 0, 0, 0, 0);
         ret += Float8(value1&other.value6, value1&other.value7, 0, 0, 0, 0, 0, 0);
         ret += Float8(value&other.value7, 0, 0, 0, 0, 0, 0, 0);
+
         return ret;
     }
 
@@ -311,7 +380,7 @@ public:
                     );
     }
 
-    Float8 twosComplement(VECTOR mask) const {
+    Float8 twosComplement(const VECTOR &mask) const {
         VECTOR notmask = ~mask;
         return Float8((mask&~value) | (notmask&value), 
                       (mask&~value1) | (notmask&value1),
@@ -327,6 +396,24 @@ public:
     Float8 twosComplement() const {
         return Float8(~value, ~value1, ~value2, ~value3, ~value4, ~value5, ~value6, ~value7)
             .addWithoutCarry(Float8(~(VECTOR)0,0,0,0,0,0,0,0));
+    }
+
+    Float8 twosComplementWithCarry(VECTOR& carry) const {
+        return Float8(~value, ~value1, ~value2, ~value3, ~value4, ~value5, ~value6, ~value7)
+            .addWithCarry(Float8(~(VECTOR)0,0,0,0,0,0,0,0), carry);
+    }
+    
+    Float8 twosComplementWithCarry(const VECTOR &mask, VECTOR& carry) const {
+        VECTOR notmask = ~mask;
+        return Float8((mask&~value) | (notmask&value), 
+                      (mask&~value1) | (notmask&value1),
+                      (mask&~value2) | (notmask&value2),
+                      (mask&~value3) | (notmask&value3),
+                      (mask&~value4) | (notmask&value4),
+                      (mask&~value5) | (notmask&value5),
+                      (mask&~value6) | (notmask&value6),
+                      (mask&~value7) | (notmask&value7)
+        ).addWithCarry(Float8(mask,0,0,0,0,0,0,0), carry);
     }
 
     Float8 operator+(const Float8 &other) const {
@@ -379,6 +466,7 @@ public:
         value7 = other.value7^value7^carry6;
         return *this;
     }
+    
     const Float8& operator*=(const Float8 &other) {
         Float8 ret = Float8();
         ret += Float8(value7&other.value, value7&other.value1, value7&other.value2, value7&other.value3, value7&other.value4, value7&other.value5, value7&other.value6, value7&other.value7);

@@ -21,8 +21,15 @@ namespace tensorless {
 
 template <typename Tensor>
 class Neural {
+public:
     virtual Tensor forward(const Tensor &input) = 0;
     virtual Tensor backward(const Tensor &error) = 0;
+    virtual std::string describe() const = 0;
+
+    friend std::ostream& operator<<(std::ostream &os, const Neural &si) {
+        os << si.describe();
+        return os;
+    }
 };
 
 }

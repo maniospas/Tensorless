@@ -1,15 +1,14 @@
 # Tensorless/Types
 
-The `tensorless/types` package has no external dependencies
-and can be used without the rest of the `tensorless` framework.
-Use it to create vectorized and highly compressed datatypes.
+The `tensorless/types` package vectorizes quantized numbers.
+It has no external dependencies and can be used without the rest of the `tensorless` framework.
 
 **Author:** Emmanouil (Manios) Krasanakis<br>
 **License:** Apache 2.0
 
-## Quickstart
+:warning: Mandatory compilation parameters: `-O2 -fopenmp` and, if `Float8` or its derivative types are used, `-finline-limit=400` or larger.
 
-Compile with the O2 or O3 flag for fast execution.
+## Quickstart
 
 ```cpp
 #include "tensorless/types/all.h"

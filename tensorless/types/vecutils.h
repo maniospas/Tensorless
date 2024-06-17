@@ -17,7 +17,7 @@ limitations under the License.
 #ifndef VECUTILS_H
 #define VECUTILS_H
 
-// #define DEBUG_OVERFLOWS  // enable for a slightly slower but logically safer execution environment
+//#define DEBUG_OVERFLOWS  // enable for a slow but logically safe execution environment
 
 #include <iostream>
 #include <vector>
@@ -44,7 +44,7 @@ std::uniform_int_distribution<long long> distribution(0, LONG_LONG_MAX);
     }
 #endif
 
-#define ONEHOT(i) ((VECTOR)1 << i)
+#define ONEHOT(i) (((VECTOR)1) << i)
 #define VECTOR_SIZE (sizeof(VECTOR)*8);
 
 }

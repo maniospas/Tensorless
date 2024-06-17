@@ -1,6 +1,7 @@
 #include "../tensorless/types/all.h"
 
 int main() {
+    // this test runs only on architectures that support int128
     int pos0 = 125;
     int pos1 = 126;
     int pos2 = 127;
@@ -10,7 +11,9 @@ int main() {
 
     std::cout << "data1[125]          " << data1[125] <<"\n";
     std::cout << "data1.sum()         " << data1.sum() <<"\n";
-    std::cout << "data2.sum()         " << data2.sum() <<"\n\n";
+    std::cout << "data2.sum()         " << data2.sum() <<"\n";
+    std::cout << "data1.absmax()      " << data1.absmax() <<"\n";
+    std::cout << "data2.absmax()      " << data2.absmax() <<"\n\n";
     
     auto add = data1+data2;
     std::cout << "data1+data2         " << add <<"\n";

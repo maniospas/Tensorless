@@ -35,27 +35,30 @@ private:
     int ins;
     int outs;
     std::vector<Tensor> weights;
+    std::vector<double> biases;
 
 protected:
     Tensor in; // keeps track of last input
     Tensor out; // keeps track of last output
-    std::vector<Tensor> activations;
+    std::vector<Tensor> grads; // keeps track of gradients
 
 public:
     Dense(int ins, int outs) : ins(ins), outs(outs) {
+        weights.reserve(outs);
         for (int i=0; i<outs;++i) 
-            weights.push_back(Tensor::random());
+            weights.emplace(weights.end(), Tensor::random());
     }
 
-    friend std::ostream& operator<<(std::ostream &os, const Dense *si) {
-        os << "Layer";
-        os << "\n  Inputs  " << si->ins;
-        os << "\n  Outputs " << si->outs;
-        /*os << "\n  Weights";
-        for (int i=0;i<si->outs;++i) 
-            os << "\n   " << si->weights[i];*/
-        os << "\n";
-        return os;
+    virtual std::string describe() const {
+        std::string description;
+        int paramSpace = Tensor::num_bits()*outs/8+outs*sizeof(double)/8;
+        description += "Dense";
+        description += "\n  Inputs   " + std::to_string(ins);
+        description += "\n  Outputs  " + std::to_string(outs);
+        description += "\n  Params   " + std::to_string(Tensor::num_params()*outs+outs)
+                            +" ("+std::to_string(paramSpace)+" bytes, "+std::to_string(paramSpace/sizeof(float)*100/ins/outs)+"% of float32)";
+        description += "\n";
+        return description;
     }
 
     virtual Tensor forward(const Tensor& input) {
@@ -64,11 +67,14 @@ public:
         #pragma omp parallel for
         for (int i=0;i<outs;++i) {
             Tensor weightedIns = input*weights[i]; 
-            double sum = weightedIns.sum()/ins*8;
+            double sum = weightedIns.sum()/ins;
             if(sum>1)
                 sum = 1;
             if(sum>0) {// relu
-                out.set(i, sum);
+                #pragma omp critical 
+                {
+                    out.set(i, sum);
+                }
             }
         }
         return out;
@@ -76,6 +82,13 @@ public:
 
     virtual Tensor backward(const Tensor &error) {
         return in;
+    }
+
+    virtual void zerograd() {
+        grads.clear();
+        grads.reserve(outs);
+        for(int i=0;i<outs;++i)
+            grads.emplace(grads.end());
     }
 };
 
