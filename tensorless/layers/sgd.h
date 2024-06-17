@@ -33,8 +33,14 @@ namespace tensorless {
 
 template <typename Tensor>
 class SGD: public Optimizer<Tensor> {
-    virtual Tensor update(int identifier, Tensor grads, double lr_mult=1) {
-        return grads*Tensor::broadcast(lr_mult*0.01);
+    double lr;
+public:
+    SGD(double lr=0.001) : lr(lr) {}
+    virtual void update(Tensor &param, const Tensor &grads, double lr_mult=1) {
+        param = param + grads*Tensor::broadcast(lr_mult*lr);
+    }
+    virtual void update(double &param, double grads, double lr_mult=1) {
+        param = param + grads*lr_mult*lr;
     }
 };
 

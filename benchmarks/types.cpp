@@ -10,7 +10,7 @@ int main() {
 
     long N = 1000000;
     
-    auto data1 = float8::random();
+    auto data1 =float8::random();
     auto data2 = float8::random();
     int size = data1.size();
     std::cout<<"Data size "<<size<<"\n";

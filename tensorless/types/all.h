@@ -35,13 +35,6 @@ namespace tensorless {
     typedef Signed<Float5> SFloat5;
     typedef Signed<Float8> SFloat8;
 
-    typedef Dynamic<Int2> DInt2;
-    typedef Dynamic<Int3> DInt3;
-    typedef Dynamic<Float3> DFloat3;
-    typedef Dynamic<Float4> DFloat4;
-    typedef Dynamic<Float5> DFloat5;
-    typedef Dynamic<Float8> DFloat8;
-
     typedef Dynamic<SFloat3> float3;
     typedef Dynamic<SFloat4> float4;
     typedef Dynamic<SFloat5> float5;

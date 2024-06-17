@@ -1,6 +1,6 @@
 # Tensorless/Types
 
-The `tensorless/types` package vectorizes quantized numbers.
+The [tensorless/types](tensorless/types/README.md) package vectorizes quantized numbers.
 It has no external dependencies and can be used without the rest of the `tensorless` framework.
 
 **Author:** Emmanouil (Manios) Krasanakis<br>
@@ -11,15 +11,26 @@ It has no external dependencies and can be used without the rest of the `tensorl
 ## Quickstart
 
 ```cpp
-#include "tensorless/types/all.h"
+#include "../tensorless/types/all.h"
+#include "../tensorless/layers/all.h"
+#include <memory>
+
+using namespace tensorless;
 
 int main() {
-    int pos0 = 0;
-    int pos1 = 1;
-    auto data1 = tensorless::Signed<tensorless::Float5>().set(pos0, 1).set(pos1, 0.5);
-    auto data2 = tensorless::Signed<tensorless::Float5>().set(pos0, 1.5).set(pos1, 0.45);
-    auto sum = data1-data2;
-    std::cout<<"Data size: "<<sum.size()<<"\n";  // this will be fixed once you compile
-    std::cout << sum<<"\n";
+    auto in = TYPE::random(); // in range [1,1]
+    auto optimizer = SGD<float8>(0.001);
+    auto arch = Layered<float8>()
+                .add(std::make_shared<Dense<float8, 64, 64>>())
+                .add(std::make_shared<Dense<float8, 64, 64>>());
+    std::cout << arch << "\n";  // print the architecture
+
+    for(int epoch=0;epoch<30;++epoch) {
+        auto out = arch.forward(in);
+        double error = ((out-in)*(out-in)).sum();
+        arch.backward(in-out, optimizer);
+        std::cout << "Epoch "<<epoch+1<<" squaresum "<<error<<"\n";
+    }
+
 }
 ```

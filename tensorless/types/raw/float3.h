@@ -144,10 +144,6 @@ public:
         return bitcount(value&mask)/4.0 + bitcount(value1&mask)/2.0 + bitcount(value2&mask);
     }
 
-    const double get(int i) {
-        return ((value >> i) & 1)/4.0 + ((value1 >> i) & 1)/2.0 + ((value2 >> i) & 1);
-    }
-
     const double get(int i) const {
         return ((value >> i) & 1)/4.0 + ((value1 >> i) & 1)/2.0 + ((value2 >> i) & 1);
     }
@@ -302,6 +298,15 @@ public:
 
     static double inf() {
         return 0;
+    }
+
+    Float3 zerolike() const {
+        return Float3();
+    }
+
+    Float3 zerolike(const VECTOR& mask) const {
+        VECTOR notmask = ~mask;
+        return Float3(value&notmask, value1&notmask, value2&notmask);
     }
 };
 

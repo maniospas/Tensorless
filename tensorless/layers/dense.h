@@ -31,6 +31,7 @@ class Dense: public Neural<Tensor> {
 private:
     Tensor weights[outs];
     double biases[outs];
+    bool activations[outs];
 
 public:
     Dense() {
@@ -54,13 +55,12 @@ public:
         Tensor in = input; 
         Tensor out = Tensor();
         double scale = 2*std::sqrt(12.0/outs);
-        #pragma omp parallel for
+        //#pragma omp parallel for
         for (int i=0;i<outs;++i) {
             Tensor weightedIns = input*weights[i]; 
-            double sum = (weightedIns.sum()+biases[i])*scale;
-            //if(sum>1)  // for SFloat8
-            //    sum = 1;
-            if(sum>0) {// relu
+            double sum = weightedIns.sum()*scale+biases[i];
+            activations[i] = sum>0;
+            if(activations[i]) { // relu
                 #pragma omp critical 
                 {
                     out.set(i, sum);
@@ -74,13 +74,17 @@ public:
         Tensor err;
         double scale = 2*std::sqrt(12.0/outs);
         double invscale = 1./scale;
+        double errorsum = error.sum();
         #pragma omp parallel for
         for (int i=0;i<outs;++i) {
-            Tensor erri = weights[i]*error;
+            if(!activations[i])
+                continue;
+            Tensor erri = weights[i]*error*Tensor::broadcast(scale);
+            optimizer.update(weights[i], error, invscale);
+            optimizer.update(biases[i], errorsum, invscale);
             #pragma omp critical
             {
                 err = err + erri;
-                weights[i] = weights[i] + optimizer.update(0, error, invscale);
             }
         }
         return err;

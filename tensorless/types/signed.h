@@ -62,8 +62,22 @@ public:
         return Signed(abs.half().twosComplement(isNegative), isNegative);
     }
 
-    Signed<Number> zerolike() {
+    Signed<Number> times2(const VECTOR &mask) const {
+        Number abs = value.twosComplement(isNegative);
+        return Signed(abs.times2(mask).twosComplement(isNegative), isNegative);
+    }
+
+    Signed<Number> half(const VECTOR &mask) const {
+        Number abs = value.twosComplement(isNegative);
+        return Signed(abs.half(mask).twosComplement(isNegative), isNegative);
+    }
+
+    Signed<Number> zerolike() const {
         return Signed();
+    }
+
+    Signed<Number> zerolike(const VECTOR &mask) const {
+        return Signed(value.zerolike(mask), isNegative&~mask);
     }
 
     Signed<Number>& operator=(const Signed<Number>& other) {
@@ -110,16 +124,28 @@ public:
         return value.twosComplement(isNegative).absmax();
     }
 
-    const double get(int i) {
-        if((isNegative >> i) & 1)
+    const double get(int i) const {
+        if((isNegative >> i) & 1) {
             return -value.twosComplement(isNegative).get(i);
+        }
         return value.get(i);
     }
 
-    const double get(int i) const {
-        if((isNegative >> i) & 1)
-            return -value.twosComplement(isNegative).get(i);
-        return value.get(i);
+    Signed<Number> set(int i, int val) {
+        VECTOR applyNegative = ((VECTOR)1 << i);
+        if(val<0) {
+            value.set(i, -val);
+            VECTOR carry;
+            value = value.twosComplementWithCarry(applyNegative, carry);
+            #pragma omp atomic
+            isNegative |= applyNegative ^ carry;
+        }
+        else {
+            value.set(i, val);
+            #pragma omp atomic
+            isNegative &= ~applyNegative;
+        }
+        return *this;
     }
 
     Signed<Number> set(int i, double val) {
@@ -163,6 +189,14 @@ public:
         return os;
     }
 
+    Signed<Number> addWithUnderflow(const Signed<Number> &other, VECTOR& underflow) const {
+        VECTOR carryOut;
+        Number result = value.addWithCarry(other.value, carryOut);
+        VECTOR finalSign = isNegative ^ other.isNegative ^ carryOut;
+        underflow = isNegative & other.isNegative & ~finalSign;
+        return Signed(result, finalSign);
+    }
+
     Signed<Number> operator+(const Signed<Number> &other) const {
         VECTOR carryOut;
         Number result = value.addWithCarry(other.value, carryOut);
@@ -170,7 +204,6 @@ public:
 
         // Detect overflow
         #ifdef DEBUG_OVERFLOWS
-        
         // Compute final sign after addition
         //VECTOR finalSign = (isNegative & other.isNegative) | (~carryOut & signChange);
         //VECTOR overflow = (isNegative & other.isNegative) | (carryOut & (isNegative ^ other.isNegative));
@@ -185,7 +218,7 @@ public:
 
     Signed<Number> twosComplement() const {
         VECTOR negative;
-        Number complement = value.twosComplementWithCarry(negative);
+        Number complement = value.twosComplement(negative);
         return Signed(complement, negative ^ ~isNegative);
     }
 
@@ -204,7 +237,22 @@ public:
         VECTOR neg = isNegative ^ other.isNegative;
         return Signed<Number>(ret.twosComplement(neg), neg);
     }
+    
+    template <typename RetNumber> RetNumber applyShifts(const RetNumber &number) const {
+        return value.applyHalf(value.applyTimes2(number, ~isNegative), isNegative);
+    }
 
+    template <typename RetNumber> RetNumber applyShifts(const RetNumber &number, const VECTOR &mask) const {
+        return value.applyHalf(value.applyTimes2(number, mask&~isNegative), mask&isNegative);
+    }
+
+    Number nonNegatives() const {
+        return value.zerolike(~isNegative);
+    }
+
+    Number negatives() const {
+        return value.zerolike(isNegative);
+    }
 };
 
 }

@@ -97,11 +97,7 @@ public:
     const int sum(VECTOR mask) {
         return bitcount(value&mask) + bitcount(value1&mask)*2;
     }
-
-    const int get(int i) {
-        return ((value >> i) & 1) + ((value1 >> i) & 1)*2;
-    }
-
+    
     const int get(int i) const {
         return ((value >> i) & 1) + ((value1 >> i) & 1)*2;
     }
@@ -141,6 +137,15 @@ public:
     Int2& operator[](std::pair<int, int> p) {
         set(p.first, p.second);
         return *this;
+    }
+
+    Int2 zerolike() const {
+        return Int2();
+    }
+
+    Int2 zerolike(const VECTOR& mask) const {
+        VECTOR notmask = ~mask;
+        return Int2(value&notmask, value1&notmask);
     }
 
     int countNonZeros() { 
@@ -224,6 +229,34 @@ public:
 
     static double inf() {
         return 0;
+    }
+
+    template <typename RetNumber> RetNumber applyHalf(const RetNumber &number) {
+        return number.half(value1);
+    }
+
+    template <typename RetNumber> RetNumber applyHalf(const RetNumber &number, const VECTOR &mask) {
+        return number.half(value1&mask);
+    }
+
+    template <typename RetNumber> RetNumber applyTimes2(const RetNumber &number) const {
+        return number.times2(value1);
+    }
+
+    template <typename RetNumber> RetNumber applyTimes2(const RetNumber &number, const VECTOR &mask) const {
+        return number.times2(value1&mask);
+    }
+
+    const int absmax() const {
+        int ret = 0;
+        VECTOR v = value;
+        if(value1) {
+            ret += 2;
+            v &= value1;
+        }
+        if(v)
+            ret += 1;
+        return ret;
     }
 };
 

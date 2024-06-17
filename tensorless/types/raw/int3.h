@@ -34,8 +34,7 @@ private:
     explicit Int3(VECTOR v, VECTOR v1, VECTOR v2) : value(v), value1(v1), value2(v2) {}
 public:
     static Int3 random() {return Int3(lrand(), lrand(), lrand());}
-    static Int3 broadcast(double value) {
-        int val = (int)value;
+    static Int3 broadcast(int val) {
         return Int3(val&1?~(VECTOR)0:0, val&2?~(VECTOR)0:0, val&4?~(VECTOR)0:0);
     }
 
@@ -56,6 +55,15 @@ public:
     Int3(const Int3 &other) : value(other.value), value1(other.value1), value2(other.value2) {}
     
     Int3() : value(0) {}
+
+    Int3 zerolike() const {
+        return Int3();
+    }
+
+    Int3 zerolike(const VECTOR& mask) const {
+        VECTOR notmask = ~mask;
+        return Int3(value&notmask, value1&notmask, value2&notmask);
+    }
 
     const int size() const {
         return sizeof(VECTOR)*8;
@@ -99,13 +107,25 @@ public:
     const int sum(VECTOR mask) {
         return bitcount(value&mask) + bitcount(value1&mask)*2 + bitcount(value2&mask)*4;
     }
-
-    const int get(int i) {
+    
+    const int get(int i) const {
         return ((value >> i) & 1) + ((value1 >> i) & 1)*2 + ((value2 >> i) & 1)*4;
     }
 
-    const int get(int i) const {
-        return ((value >> i) & 1) + ((value1 >> i) & 1)*2 + ((value2 >> i) & 1)*4;
+    template <typename RetNumber> RetNumber applyHalf(const RetNumber &number) const {
+        return number.half(value2).half(value2).half(value1);
+    }
+
+    template <typename RetNumber> RetNumber applyHalf(const RetNumber &number, const VECTOR &mask) const {
+        return number.half(value2&mask).half(value2&mask).half(value1&mask);
+    }
+    
+    template <typename RetNumber> RetNumber applyTimes2(const RetNumber &number) const {
+        return number.times2(value2).times2(value2).times2(value1);
+    }
+
+    template <typename RetNumber> RetNumber applyTimes2(const RetNumber &number, const VECTOR &mask) const {
+        return number.times2(value2&mask).times2(value2&mask).times2(value1&mask);
     }
 
     const Int3& set(int i, int val) {
@@ -246,6 +266,24 @@ public:
 
     static double inf() {
         return 0;
+    }
+
+    const int absmax() const {
+        int ret = 0;
+        VECTOR v1 = value1;
+        VECTOR v = value;
+        if(value2) {
+            ret += 4;
+            v1 &= value2;
+            v &= value2;
+        }
+        if(v1) {
+            ret += 2;
+            v &= v1;
+        }
+        if(v)
+            ret += 1;
+        return ret;
     }
 };
 

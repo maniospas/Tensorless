@@ -17,6 +17,11 @@
 
 ## :rocket: Quickstart
 
+Here's how to use the `float8` data type: 
+this packs 128 numbers discertized into 8 bits of numerical precision, 1 sign bit,
+and a shared double mantissa.
+
+
 ```cpp
 #include "tensorless/types/all.h"
 
@@ -25,11 +30,12 @@ using namespace tensorless;
 int main() {
     int pos0 = 0;
     int pos1 = 1;
-    auto data1 = Signed<Float3>().set(pos0, 1).set(pos1, 0.5);
-    auto data2 = Signed<Float3>().set(pos0, 1.5).set(pos1, 0.45);
+    auto data1 = float8().set(pos0, 1).set(pos1, 0.5);
+    auto data2 = float8().set(pos0, 1.5).set(pos1, 0.45);
     auto sum = data1-data2;
-    std::cout<<"Data size: "<<sum.size()<<"\n";
-    std::cout << sum<<"\n";
+    std::cout << "Stored numbers: " << sum.size() << "\n";  // 128
+    std::cout << "Used bytes: " << sum.num_bits()/8 << "\n";  // 152
+    std::cout << sum << "\n";  // -0.503906,0.046875,0,0,0,0,0,0,0,0, ... ]
 }
 ```
 

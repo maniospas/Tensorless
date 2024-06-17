@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#ifndef Dynamic_H
-#define Dynamic_H
+#ifndef DYNAMIC_H
+#define DYNAMIC_H
 
 #include <iostream>
 #include <vector>
@@ -170,4 +170,4 @@ public:
 };
 
 }
-#endif  // Dynamic_H
+#endif  // DYNAMIC_H

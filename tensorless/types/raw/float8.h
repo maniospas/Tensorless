@@ -119,8 +119,38 @@ public:
         return Float8(0, value, value1, value2, value3, value4, value5, value6);
     }
 
+    Float8 times2(const VECTOR &mask) const {
+        #ifdef DEBUG_OVERFLOWS
+        if(value7 & mask)
+            throw std::logic_error("arithmetic overflow");
+        #endif
+        VECTOR notmask = ~mask;
+        return Float8(                   notmask & value, 
+                      (mask & value)  | (notmask & value1),
+                      (mask & value1) | (notmask & value2),
+                      (mask & value2) | (notmask & value3),
+                      (mask & value3) | (notmask & value4),
+                      (mask & value4) | (notmask & value5),
+                      (mask & value5) | (notmask & value6),
+                      (mask & value6) | (notmask & value7)
+                      );
+    }
+
     Float8 half() const {
         return Float8(value1, value2, value3, value4, value5, value6, value7, 0);
+    }
+
+    Float8 half(const VECTOR &mask) const {
+        VECTOR notmask = ~mask;
+        return Float8(
+                      (mask & value1) | (value & notmask), 
+                      (mask & value2) | (value1 & notmask), 
+                      (mask & value3) | (value2 & notmask), 
+                      (mask & value4) | (value3 & notmask), 
+                      (mask & value5) | (value4 & notmask), 
+                      (mask & value6) | (value5 & notmask), 
+                      (mask & value7) | (value6 & notmask), 
+                                         value7 & notmask);
     }
 
     static int num_params() {
@@ -211,10 +241,6 @@ public:
 
     const double sum(VECTOR mask) const {
         return bitcount(value&mask)/128.0 + bitcount(value1&mask)/64.0 + bitcount(value2&mask)/32.0 + bitcount(value3&mask)/16.0 + bitcount(value4&mask)/8.0 + bitcount(value5&mask) /4.0 + bitcount(value6&mask)/2.0 + bitcount(value7&mask);
-    }
-
-    const double get(int i) {
-        return ((value >> i) & 1)/128.0 + ((value1 >> i) & 1)/64.0 + ((value2 >> i) & 1)/32.0 + ((value3 >> i) & 1)/16.0 + ((value4 >> i) & 1)/8.0 + ((value5 >> i) & 1)/4.0 + ((value6 >> i) & 1)/2.0 + ((value7 >> i) & 1);
     }
 
     const double get(int i) const {
@@ -494,6 +520,15 @@ public:
 
     static double inf() {
         return 0;
+    }
+
+    Float8 zerolike() const {
+        return Float8();
+    }
+
+    Float8 zerolike(const VECTOR& mask) const {
+        VECTOR notmask = ~mask;
+        return Float8(value&notmask, value1&notmask, value2&notmask, value3&notmask, value4&notmask, value5&notmask, value6&notmask, value7&notmask);
     }
 };
 }

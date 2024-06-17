@@ -27,7 +27,8 @@ class Neural;
 template <typename Tensor>
 class Optimizer {
 public:
-    virtual Tensor update(int identifier, Tensor grads, double lr_mult=1) = 0;
+    virtual void update(Tensor& param, const Tensor &grads, double lr_mult=1) = 0;
+    virtual void update(double& param, double grads, double lr_mult=1) = 0;
 };
 
 // neural class
