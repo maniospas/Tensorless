@@ -94,7 +94,7 @@ public:
     }
     
     explicit operator bool() const {
-        return (bool)(value) || (bool)value1 || (bool)value2 || (bool)value3 || (bool)value4;
+        return ANY(value) || ANY(value1) || ANY(value2) || ANY(value3) || ANY(value4);
     }
 
     friend std::ostream& operator<<(std::ostream &os, const Float5 &si) {
@@ -116,7 +116,7 @@ public:
 
     Float5 times2() {
         #ifdef DEBUG_OVERFLOWS
-        if(value4)
+        if(ANY(value4))
             throw std::logic_error("arithmetic overflow");
         #endif
         return Float5(0, value, value1, value2, value3);
@@ -128,49 +128,64 @@ public:
 
     const bool isZeroAt(int i) {
         VECTOR a = value | value1 | value2 | value3 | value4;
-        return (a >> i) & 1;
+        return GETAT(a, i);
     }
 
     const double absmax() const {
-        double ret = 0;
+        int ret = 0;
         VECTOR mask = 0;
-        if(value4) {
-            ret += 1;
+        if(ANY(value4)) {
+            ret += 16;
             mask = value4;
         }
         else 
             mask = ~mask;
         VECTOR v3 = value3 & mask;
-        if(v3) {
-            ret += 0.5;
+        if(ANY(v3)) {
+            ret += 8;
             mask = v3;
         }
         VECTOR v2 = value2 & mask;
-        if(v2) {
-            ret += 0.25;
+        if(ANY(v2)) {
+            ret += 4;
             mask = v2;
         }
         VECTOR v1 = value1 & mask;
         VECTOR v = value;
-        if(v1) {
-            ret += 0.125;
+        if(ANY(v1)) {
+            ret += 2;
             v &= v1;
         }
-        if(v)
-            ret += 0.0625;
-        return ret;
+        if(ANY(v))
+            ret += 1;
+        return ret/16.0;
     }
 
     const double sum() const {
-        return bitcount(value)/16.0 + bitcount(value1)/8.0 + bitcount(value2) /4.0 + bitcount(value3)/2.0 + bitcount(value4);
+        int ret = bitcount(value);
+        ret += bitcount(value1)*2;
+        ret += bitcount(value2)*4;
+        ret += bitcount(value3)*8;
+        ret += bitcount(value4)*16;
+        return ret/16.0;
     }
 
-    const double sum(VECTOR mask) const {
-        return bitcount(value&mask)/16.0 + bitcount(value1&mask)/8.0 + bitcount(value2&mask) /4.0 + bitcount(value3&mask)/2.0 + bitcount(value4&mask);
+    const double sum(const VECTOR &mask) const {
+        int ret = bitcount(value&mask);
+        ret += bitcount(value1&mask)*2;
+        ret += bitcount(value2&mask)*4;
+        ret += bitcount(value3&mask)*8;
+        ret += bitcount(value4&mask)*16;
+        return ret/16.0;
     }
-
+    
     const double get(int i) const {
-        return ((value >> i) & 1)/16.0 + ((value1 >> i) & 1)/8.0 + ((value2 >> i) & 1)/4.0 + ((value3 >> i) & 1)/2.0 + ((value4 >> i) & 1);
+        int ret = GETAT(value, i);
+        ret += GETAT(value1, i)*2;
+        ret += GETAT(value2, i)*4;
+        ret += GETAT(value3, i)*8;
+        ret += GETAT(value4, i)*16;
+        return ret/16.0;
     }
 
     const Float5& set(int i, double val) {
@@ -179,47 +194,47 @@ public:
         if(val<0 || val>2)
             throw std::logic_error("can only set values in range [0,2]");
         if(val>=1) {
-            #pragma omp atomic
+            // #pragma omp atomic
             value4 |= ONEHOT(i);
             val -= 1;
         }
         else {
-            #pragma omp atomic
+            // #pragma omp atomic
             value4 &= ~ONEHOT(i);
         }
         if(val>=0.5) {
-            #pragma omp atomic
+            // #pragma omp atomic
             value3 |= ONEHOT(i);
             val -= 0.5;
         }
         else{
-            #pragma omp atomic
+            // #pragma omp atomic
             value3 &= ~ONEHOT(i);
         }
         if(val>=0.25){
-            #pragma omp atomic
+            // #pragma omp atomic
             value2 |= ONEHOT(i);
             val -= 0.25;
         }
         else {
-            #pragma omp atomic
+            // #pragma omp atomic
             value2 &= ~ONEHOT(i);
         }
         if(val>=0.125){
-            #pragma omp atomic
+            // #pragma omp atomic
             value1 |= ONEHOT(i);
             val -= 0.125;
         }
         else {
-            #pragma omp atomic
+            // #pragma omp atomic
             value1 &= ~ONEHOT(i);
         }
         if(val>=0.0625/2) {
-            #pragma omp atomic
+            // #pragma omp atomic
             value |= ONEHOT(i);
         }
         else {
-            #pragma omp atomic
+            // #pragma omp atomic
             value &= ~ONEHOT(i);
         }
         return *this;
@@ -241,15 +256,6 @@ public:
     int countNonZeros() { 
         VECTOR n = value | value1 | value2 | value3 | value4;
         return bitcount(n);
-    }
-    
-    void debug() const {
-        std::cout<<"\n"<<(std::bitset<8>)value;
-        std::cout<<"\n"<<(std::bitset<8>)value1;
-        std::cout<<"\n"<<(std::bitset<8>)value2;
-        std::cout<<"\n"<<(std::bitset<8>)value3;
-        std::cout<<"\n"<<(std::bitset<8>)value4;
-        std::cout<<"\n";
     }
 
     Float5 operator~() const {
@@ -333,7 +339,7 @@ public:
 
         #ifdef DEBUG_OVERFLOWS
         VECTOR lastcarry = (value4 & other.value4) | (carry3 & (value4 ^ other.value4));
-        if(lastcarry) 
+        if(ANY(lastcarry)) 
             throw std::logic_error("arithmetic overflow");
         #endif
 
@@ -352,7 +358,7 @@ public:
         
         #ifdef DEBUG_OVERFLOWS
         VECTOR lastcarry = (value4 & other.value4) | (carry3 & (value4 ^ other.value4));
-        if(lastcarry)
+        if(ANY(lastcarry))
             throw std::logic_error("arithmetic overflow");
         #endif
 
@@ -380,6 +386,10 @@ public:
 
     static double sup() {
         return 1.9375;
+    }
+
+    static double eps() {
+        return 0.0625;
     }
 
     static double inf() {

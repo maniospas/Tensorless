@@ -39,8 +39,10 @@ public:
     static Floating<Number, Mantisa> random() {return Floating(Number::random(), Mantisa::broadcast(0));}
     static int num_params() {return Number::num_params() + Mantisa::num_params();} 
     static int num_bits() {return Number::num_bits() + Mantisa::num_bits();}
-    Floating<Number, Mantisa> times2() {return Floating(value, mantisa+Mantisa::broadcast(1));}
-    Floating<Number, Mantisa> zerolike() {return Floating();}
+    Floating<Number, Mantisa> times2() const {return Floating(value, mantisa+Mantisa::broadcast(1));}
+    Floating<Number, Mantisa> zerolike() const {return Floating();}
+    Mantisa getMantisa() const {return mantisa;}
+    Number getBody() const {return value;}
     const double get(int i) const {
         int mant=(int)mantisa.get(i); 
         if(mant<0)
@@ -80,15 +82,15 @@ public:
 
     Floating<Number, Mantisa>& set(int i, double val) {
         int mant = 0;
-        int mantsup = Mantisa::sup();
-        int mantinf = -mantsup;
-        double sup = Number::sup()*0.5;
         if(val) {
+            int mantsup = Mantisa::sup();
+            int mantinf = -mantsup;
+            double sup = Number::sup()*0.5; // this is enabled here to avoid performing a convertion within all operations
             while((val>sup || val<-sup) && mant < mantsup) {
                 val /= 2;
                 mant++;
             }
-            sup *= 0.25;
+            sup *= 0.5;
             while(val<sup && val>-sup && mant > mantinf) {
                 val *= 2;
                 mant--;
@@ -103,6 +105,7 @@ public:
     const double sum() const {
         return 0;
     }
+    
 
     /*const double sum(VECTOR mask) const {
         return value.sum(mask)*mantisa;
@@ -122,23 +125,33 @@ public:
     }
     */
 
-    /*Floating<Number> operator+(const Floating<Number, Mantisa> &other) const {
-        Number mantisaDiff = mantisa-other.mantisa;
-        Number common = mantisaDiff.applyShifts();
+    Floating<Number, Mantisa> operator+(const Floating<Number, Mantisa> &other) const {
+        Mantisa selfDiff = (mantisa-other.mantisa).relu();
+        Mantisa otherDiff = (other.mantisa-other.mantisa).relu();
 
-        if(other.mantisa<mantisa)
-            return Floating(value+other.value*Number::broadcast(other.mantisa/mantisa), mantisa);
-        else
-            return Floating(value*Number::broadcast(mantisa/other.mantisa)+other.value, other.mantisa);
-    }*/
+        Number selfValue = otherDiff.applyHalf(value);
+        Number otherValue = selfDiff.applyHalf(other.value);
+
+        Mantisa absDiff = selfDiff+otherDiff;
+
+        std::cout << "Mant1 "<<mantisa<<"\n";
+        std::cout << "Mant2 "<<other.mantisa<<"\n";
+        std::cout << "Absdiff1 "<<mantisa-other.mantisa<<"\n";
+        std::cout << "Absdiff1 "<<selfDiff<<"\n";
+        std::cout << "Max "<<(mantisa+other.mantisa+absDiff).half()<<"\n";
+        std::cout << "Val1 "<<value<<"\n";
+        std::cout << "Val2 "<<other.value<<"\n";
+        std::cout << "Val1 "<<selfValue<<"\n";
+        std::cout << "Val2 "<<otherValue<<"\n";
+
+        return Floating<Number, Mantisa>(selfValue+otherValue, (mantisa+other.mantisa+absDiff).half());
+    }
 
     Floating<Number, Mantisa> operator*(const Floating<Number, Mantisa> &other) const {
         VECTOR underflow;
         Mantisa newMantisa = mantisa.addWithUnderflow(other.mantisa, underflow);
-        return Floating<Number, Mantisa>((value*other.value).zerolike(underflow), 
-                                            newMantisa.zerolike(underflow));
+        return Floating<Number, Mantisa>(value.zerolike(underflow)*other.value, newMantisa);
     }
-
 
     Floating<Number, Mantisa>& operator=(const Floating<Number, Mantisa>& other) {
         if (this != &other) {

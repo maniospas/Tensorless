@@ -39,9 +39,9 @@ private:
     explicit Float8(VECTOR v, VECTOR v1, VECTOR v2, VECTOR v3, VECTOR v4, VECTOR v5, VECTOR v6, VECTOR v7) : 
         value(v), value1(v1), value2(v2), value3(v3), value4(v4), value5(v5), value6(v6), value7(v7) {}
 public:
-    static Float8 random() {return Float8(lrand(), lrand(), lrand(), lrand(), lrand(), lrand(), lrand(), 0);}
+    static inline Float8 random() {return Float8(lrand(), lrand(), lrand(), lrand(), lrand(), lrand(), lrand(), 0);}
     
-    static Float8 broadcast(double val) {
+    static inline Float8 broadcast(double val) {
         if(val<0 || val>2)
             throw std::logic_error("can only set values in range [0,2]");
         VECTOR value7 = 0;
@@ -86,18 +86,18 @@ public:
     }
 
 
-    Float8(const std::vector<double>& vec) : value(0), value1(0), value2(0), value3(0), value4(0), value5(0), value6(0), value7(0) {
+    inline Float8(const std::vector<double>& vec) : value(0), value1(0), value2(0), value3(0), value4(0), value5(0), value6(0), value7(0) {
         for (int i = 0; i < vec.size(); ++i) 
             if (vec[i]) 
                 set(i, vec[i]);
     }
     
-    Float8(const Float8 &other) : 
+    inline Float8(const Float8 &other) : 
         value(other.value), value1(other.value1), value2(other.value2), value3(other.value3), value4(other.value4), value5(other.value5), value6(other.value6), value7(other.value7) {}
     
-    Float8() : value(0), value1(0), value2(0), value3(0), value4(0), value5(0), value6(0), value7(0) {}
+    inline Float8() : value(0), value1(0), value2(0), value3(0), value4(0), value5(0), value6(0), value7(0) {}
 
-    Float8& operator=(const Float8 &other) {
+    inline Float8& operator=(const Float8 &other) {
         if (this != &other) {
             value = other.value;
             value1 = other.value1;
@@ -111,17 +111,17 @@ public:
         return *this;
     }
 
-    Float8 times2() const {
+    inline Float8 times2() const {
         #ifdef DEBUG_OVERFLOWS
-        if(value7)
+        if(ANY(value7))
             throw std::logic_error("arithmetic overflow");
         #endif
         return Float8(0, value, value1, value2, value3, value4, value5, value6);
     }
 
-    Float8 times2(const VECTOR &mask) const {
+    inline Float8 times2(const VECTOR &mask) const {
         #ifdef DEBUG_OVERFLOWS
-        if(value7 & mask)
+        if(ANY(value7 & mask))
             throw std::logic_error("arithmetic overflow");
         #endif
         VECTOR notmask = ~mask;
@@ -136,11 +136,11 @@ public:
                       );
     }
 
-    Float8 half() const {
+    inline Float8 half() const {
         return Float8(value1, value2, value3, value4, value5, value6, value7, 0);
     }
 
-    Float8 half(const VECTOR &mask) const {
+    inline Float8 half(const VECTOR &mask) const {
         VECTOR notmask = ~mask;
         return Float8(
                       (mask & value1) | (value & notmask), 
@@ -153,19 +153,20 @@ public:
                                          value7 & notmask);
     }
 
-    static int num_params() {
+    inline static int num_params() {
         return 8;
     }
 
-    static int num_bits() {
+    inline static int num_bits() {
         return 8*VECTOR_SIZE;
     }
     
-    explicit operator bool() const {
-        return (bool)(value) || (bool)value1 || (bool)value2 || (bool)value3 || (bool)value4 || (bool)value5 || (bool)value6 || (bool)value7;
+    inline explicit operator bool() const {
+        return ANY(value) || ANY(value1) || ANY(value2) || ANY(value3) 
+            || ANY(value4) || ANY(value5) || ANY(value6) || ANY(value7);
     }
 
-    friend std::ostream& operator<<(std::ostream &os, const Float8 &si) {
+    inline friend std::ostream& operator<<(std::ostream &os, const Float8 &si) {
         os << "[" << si.get(0);
         for(int i=1;i<si.size();i++)
             os << "," << si.get(i);
@@ -173,187 +174,210 @@ public:
         return os;
     }
 
-    const Float8& print(const std::string& text="") const {
+    inline const Float8& print(const std::string& text="") const {
         std::cout << text << *this << "\n";
         return *this;
     }
 
-    const int size() const {
+    inline const int size() const {
         return VECTOR_SIZE;
     }
 
-    const bool isZeroAt(int i) {
+    inline const bool isZeroAt(int i) {
         VECTOR a = value | value1 | value2 | value3 | value4 | value5 | value6 | value7;
-        return (a >> i) & 1;
+        return GETAT(a, i);
     }
     
-    const double absmax() const {
-        double ret = 0;
+    inline const double absmax() const {
+        int ret = 0;
         VECTOR mask = 0;
-        if(value7) {
-            ret += 1;
+        if(ANY(value7)) {
+            ret += 128;
             mask = value7;
         } 
         else {
             mask = ~mask;
         }
         VECTOR v6 = value6 & mask;
-        if(v6) {
-            ret += 0.5;
+        if(ANY(v6)) {
+            ret += 64;
             mask = v6;
         }
         VECTOR v5 = value5 & mask;
-        if(v5) {
-            ret += 0.25;
+        if(ANY(v5)) {
+            ret += 32;
             mask = v5;
         }
         VECTOR v4 = value4 & mask;
-        if(v4) {
-            ret += 0.125;
+        if(ANY(v4)) {
+            ret += 16;
             mask = v4;
         }
         VECTOR v3 = value3 & mask;
-        if(v3) {
-            ret += 0.0625;
+        if(ANY(v3)) {
+            ret += 8;
             mask = v3;
         }
         VECTOR v2 = value2 & mask;
-        if(v2) {
-            ret += 0.03125;
+        if(ANY(v2)) {
+            ret += 4;
             mask = v2;
         }
         VECTOR v1 = value1 & mask;
         VECTOR v = value;
-        if(v1) {
-            ret += 0.015625;
+        if(ANY(v1)) {
+            ret += 2;
             v &= v1;
         }
-        if(v) {
-            ret += 0.0078125;
+        if(ANY(v)) {
+            ret += 1;
         }
-        return ret;
+        return ret/128.0;
     }
 
-
-    const double sum() const {
-        return bitcount(value)/128.0 + bitcount(value1)/64.0 + bitcount(value2)/32.0 + bitcount(value3)/16.0 + bitcount(value4)/8.0 + bitcount(value5) /4.0 + bitcount(value6)/2.0 + bitcount(value7);
+    inline const double sum() const {
+        int ret = bitcount(value);
+        ret += bitcount(value1)*2;
+        ret += bitcount(value2)*4;
+        ret += bitcount(value3)*8;
+        ret += bitcount(value4)*16;
+        ret += bitcount(value5)*32;
+        ret += bitcount(value6)*64;
+        ret += bitcount(value7)*128;
+        return ret/128.0;
     }
 
-    const double sum(VECTOR mask) const {
-        return bitcount(value&mask)/128.0 + bitcount(value1&mask)/64.0 + bitcount(value2&mask)/32.0 + bitcount(value3&mask)/16.0 + bitcount(value4&mask)/8.0 + bitcount(value5&mask) /4.0 + bitcount(value6&mask)/2.0 + bitcount(value7&mask);
+    inline const double sum(const VECTOR &mask) const {
+        int ret = bitcount(value & mask);
+        ret += bitcount(value1 & mask)*2;
+        ret += bitcount(value2 & mask)*4;
+        ret += bitcount(value3 & mask)*8;
+        ret += bitcount(value4 & mask)*16;
+        ret += bitcount(value5 & mask)*32;
+        ret += bitcount(value6 & mask)*64;
+        ret += bitcount(value7 & mask)*128;
+        return ret/128.0;
+    }
+    
+    inline const double get(int i) const {
+        int ret = GETAT(value, i);
+        ret += GETAT(value1, i)*2;
+        ret += GETAT(value2, i)*4;
+        ret += GETAT(value3, i)*8;
+        ret += GETAT(value4, i)*16;
+        ret += GETAT(value5, i)*32;
+        ret += GETAT(value6, i)*64;
+        ret += GETAT(value7, i)*128;
+        return ret/128.0;
     }
 
-    const double get(int i) const {
-        return ((value >> i) & 1)/128.0 + ((value1 >> i) & 1)/64.0 + ((value2 >> i) & 1)/32.0 + ((value3 >> i) & 1)/16.0 + ((value4 >> i) & 1)/8.0 + ((value5 >> i) & 1)/4.0 + ((value6 >> i) & 1)/2.0 + ((value7 >> i) & 1);
-    }
-
-    const Float8& set(int i, double val) {
+    inline const Float8& set(int i, double val) {
         if(size()<=i || i<0)
             throw std::logic_error("out of of range");
         if(val<0 || val>2)
             throw std::logic_error("can only set values in range [0,2]");
         if(val>=1) {
-            #pragma omp atomic
+            // #pragma omp atomic
             value7 |= ONEHOT(i);
             val -= 1;
         }
         else {
-            #pragma omp atomic
+            // #pragma omp atomic
             value7 &= ~ONEHOT(i);
         }
         if(val>=0.5) {
-            #pragma omp atomic
+            // #pragma omp atomic
             value6 |= ONEHOT(i);
             val -= 0.5;
         }
         else{
-            #pragma omp atomic
+            // #pragma omp atomic
             value6 &= ~ONEHOT(i);
         }
         if(val>=0.25){
-            #pragma omp atomic
+            // #pragma omp atomic
             value5 |= ONEHOT(i);
             val -= 0.25;
         }
         else {
-            #pragma omp atomic
+            // #pragma omp atomic
             value5 &= ~ONEHOT(i);
         }
         if(val>=0.125){
-            #pragma omp atomic
+            // #pragma omp atomic
             value4 |= ONEHOT(i);
             val -= 0.125;
         }
         else {
-            #pragma omp atomic
+            // #pragma omp atomic
             value4 &= ~ONEHOT(i);
         }
         if(val>=0.0625) {
-            #pragma omp atomic
+            // #pragma omp atomic
             value3 |= ONEHOT(i);
             val -= 0.0625;
         }
         else {
-            #pragma omp atomic
+            // #pragma omp atomic
             value3 &= ~ONEHOT(i);
         }
         if(val>=0.03125) {
-            #pragma omp atomic
+            // #pragma omp atomic
             value2 |= ONEHOT(i);
             val -= 0.03125;
         }
         else {
-            #pragma omp atomic
+            // #pragma omp atomic
             value2 &= ~ONEHOT(i);
         }
         if(val>=0.015625) {
-            #pragma omp atomic
+            // #pragma omp atomic
             value1 |= ONEHOT(i);
             val -= 0.015625;
         }
         else {
-            #pragma omp atomic
+            // #pragma omp atomic
             value1 &= ~ONEHOT(i);
         }
         if(val>=0.0078125/2) {
-            #pragma omp atomic
+            // #pragma omp atomic
             value |= ONEHOT(i);
         }
         else {
-            #pragma omp atomic
+            // #pragma omp atomic
             value &= ~ONEHOT(i);
         }
         return *this;
     }
 
-    double operator[](int i) {
+    inline double operator[](int i) {
         return get(i);
     }
 
-    double operator[](int i) const {
+    inline double operator[](int i) const {
         return get(i);
     }
     
-    Float8& operator[](std::pair<int, double> p) {
+    inline Float8& operator[](std::pair<int, double> p) {
         set(p.first, p.second);
         return *this;
     }
 
-    int countNonZeros() { 
+    inline int countNonZeros() { 
         VECTOR n = value | value1 | value2 | value3 | value4 | value5 | value6 | value7;
         return bitcount(n);
     }
 
-    Float8 operator~() const {
+    inline Float8 operator~() const {
         return Float8(0, 0, 0, 0, 0, 0, 0, ~(value | value1 | value2 | value3 | value4 | value5 | value6 | value7));
     }
 
-    Float8 operator!=(const Float8 &other) const {
+    inline Float8 operator!=(const Float8 &other) const {
         return Float8(0, 0, 0, 0, 0, 0, 0, 
             (other.value^value) | (other.value1^value1) | (other.value2^value2) | (other.value3^value3) | (other.value4^value4) | (other.value5^value5) | (other.value6^value6) | (other.value7^value7));
     }
 
-    Float8 operator*(const Float8 &other) const {
+    inline Float8 operator*(const Float8 &other) const {
         Float8 ret = Float8();
         ret += Float8(value7&other.value, value7&other.value1, value7&other.value2, value7&other.value3, value7&other.value4, value7&other.value5, value7&other.value6, value7&other.value7);
         ret += Float8(value6&other.value1, value6&other.value2, value6&other.value3, value6&other.value4, value6&other.value5, value6&other.value6, value6&other.value7, 0);
@@ -367,7 +391,7 @@ public:
         return ret;
     }
 
-    Float8 addWithoutCarry(const Float8 &other) const {
+    inline Float8 addWithoutCarry(const Float8 &other) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -386,7 +410,7 @@ public:
                     );
     }
 
-    Float8 addWithCarry(const Float8 &other, VECTOR &lastcarry) const {
+    inline Float8 addWithCarry(const Float8 &other, VECTOR &lastcarry) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -406,7 +430,7 @@ public:
                     );
     }
 
-    Float8 twosComplement(const VECTOR &mask) const {
+    inline Float8 twosComplement(const VECTOR &mask) const {
         VECTOR notmask = ~mask;
         return Float8((mask&~value) | (notmask&value), 
                       (mask&~value1) | (notmask&value1),
@@ -419,17 +443,17 @@ public:
         ).addWithoutCarry(Float8(mask,0,0,0,0,0,0,0));
     }
 
-    Float8 twosComplement() const {
+    inline Float8 twosComplement() const {
         return Float8(~value, ~value1, ~value2, ~value3, ~value4, ~value5, ~value6, ~value7)
             .addWithoutCarry(Float8(~(VECTOR)0,0,0,0,0,0,0,0));
     }
 
-    Float8 twosComplementWithCarry(VECTOR& carry) const {
+    inline Float8 twosComplementWithCarry(VECTOR& carry) const {
         return Float8(~value, ~value1, ~value2, ~value3, ~value4, ~value5, ~value6, ~value7)
             .addWithCarry(Float8(~(VECTOR)0,0,0,0,0,0,0,0), carry);
     }
     
-    Float8 twosComplementWithCarry(const VECTOR &mask, VECTOR& carry) const {
+    inline Float8 twosComplementWithCarry(const VECTOR &mask, VECTOR& carry) const {
         VECTOR notmask = ~mask;
         return Float8((mask&~value) | (notmask&value), 
                       (mask&~value1) | (notmask&value1),
@@ -442,7 +466,7 @@ public:
         ).addWithCarry(Float8(mask,0,0,0,0,0,0,0), carry);
     }
 
-    Float8 operator+(const Float8 &other) const {
+    inline Float8 operator+(const Float8 &other) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -453,7 +477,7 @@ public:
 
         #ifdef DEBUG_OVERFLOWS
         VECTOR lastcarry = (value7 & other.value7) | (carry6 & (value7 ^ other.value7));
-        if(lastcarry) 
+        if(ANY(lastcarry)) 
             throw std::logic_error("arithmetic overflow");
         #endif
 
@@ -467,7 +491,7 @@ public:
                     other.value7^value7^carry6
                     );
     }
-    const Float8& operator+=(const Float8 &other) {
+    inline const Float8& operator+=(const Float8 &other) {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -478,7 +502,7 @@ public:
 
         #ifdef DEBUG_OVERFLOWS
         VECTOR lastcarry = (value7 & other.value7) | (carry6 & (value7 ^ other.value7));
-        if(lastcarry) 
+        if(ANY(lastcarry)) 
             throw std::logic_error("arithmetic overflow");
         #endif
 
@@ -493,7 +517,7 @@ public:
         return *this;
     }
     
-    const Float8& operator*=(const Float8 &other) {
+    inline const Float8& operator*=(const Float8 &other) {
         Float8 ret = Float8();
         ret += Float8(value7&other.value, value7&other.value1, value7&other.value2, value7&other.value3, value7&other.value4, value7&other.value5, value7&other.value6, value7&other.value7);
         ret += Float8(value6&other.value1, value6&other.value2, value6&other.value3, value6&other.value4, value6&other.value5, value6&other.value6, value6&other.value7, 0);
@@ -514,19 +538,23 @@ public:
         return *this;
     }
 
-    static double sup() {
+    inline static double sup() {
         return 1.9921875;
     }
+    
+    static double eps() {
+        return 0.0078125;
+    }
 
-    static double inf() {
+    inline static double inf() {
         return 0;
     }
 
-    Float8 zerolike() const {
+    inline Float8 zerolike() const {
         return Float8();
     }
 
-    Float8 zerolike(const VECTOR& mask) const {
+    inline Float8 zerolike(const VECTOR& mask) const {
         VECTOR notmask = ~mask;
         return Float8(value&notmask, value1&notmask, value2&notmask, value3&notmask, value4&notmask, value5&notmask, value6&notmask, value7&notmask);
     }

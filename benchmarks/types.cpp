@@ -10,8 +10,8 @@ int main() {
 
     long N = 1000000;
     
-    auto data1 =float8::random();
-    auto data2 = float8::random();
+    auto data1 = Floating<Signed<Float8>, Signed<Int4>>::random();
+    auto data2 = Floating<Signed<Float8>, Signed<Int4>>::random();
     int size = data1.size();
     std::cout<<"Data size "<<size<<"\n";
     
@@ -37,6 +37,6 @@ int main() {
     std::cout << "Time taken for "<<N<<" slow vector muls: " << elapsed.count() << " seconds\n";
 
     
-    std::cout << res0<<" "<<res<<"\n";
+    std::cout << res0<<" "<<(double)res<<"\n";
 
 }

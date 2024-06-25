@@ -3,14 +3,14 @@
 
 int main() {
     // this test runs only on architectures that support int128
-    int pos0 = 125;
-    int pos1 = 126;
-    int pos2 = 127;
+    int pos0 = 0;
+    int pos1 = 1;
+    int pos2 = 2;
     auto data1 = tensorless::Signed<tensorless::Float5>().set(pos0, -1).set(pos1, 0.125).set(pos2, 0.25);
     auto data2 = tensorless::Signed<tensorless::Float5>().set(pos0, -0.5).set(pos1, -1.5).set(pos2, 1);
     std::cout<<"Number of dimensions  "<<data1.size()<<"\n\n";
 
-    std::cout << "data1[125]          " << data1[125] <<"\n";
+    std::cout << "data1[0]            " << data1[0] <<"\n";
     std::cout << "data1.sum()         " << data1.sum() <<"\n";
     std::cout << "data2.sum()         " << data2.sum() <<"\n";
     std::cout << "data1.absmax()      " << data1.absmax() <<"\n";

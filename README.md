@@ -6,7 +6,7 @@
 **Language:** C++<br>
 **License:** Apache 2.0
 
-:warning: Mandatory compilation parameters: `-O2 -fopenmp` and, if `Float8` or its derivative types are used, `-finline-limit=400` or larger.
+:warning: Mandatory compilation parameters: `-O2 -fopenmp` and, if `Float8` or its derivative types are used, `-finline-limit=400` or larger. 
 
 
 ## :fire: CPU vectorization

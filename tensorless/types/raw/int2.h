@@ -69,7 +69,7 @@ public:
     }
 
     explicit operator bool() const {
-        return (bool)(value) || (bool)value1;
+        return ANY(value) || ANY(value1);
     }
     
     friend std::ostream& operator<<(std::ostream &os, const Int2 &si) {
@@ -87,7 +87,7 @@ public:
 
     const bool isZeroAt(int i) {
         VECTOR a = value | value1;
-        return (a >> i) & 1;
+        return GETAT(a, i);
     }
 
     const int sum() {
@@ -99,7 +99,7 @@ public:
     }
     
     const int get(int i) const {
-        return ((value >> i) & 1) + ((value1 >> i) & 1)*2;
+        return GETAT(value, i) + GETAT(value1, i)*2;
     }
 
     const Int2& set(int i, int val) {
@@ -108,19 +108,19 @@ public:
         if(val<0 || val>3)
             throw std::logic_error("can only set values in range [0,3]");
         if(val&1) {
-            #pragma omp atomic
+            // #pragma omp atomic
             value |= ONEHOT(i);
         }
         else {
-            #pragma omp atomic
+            // #pragma omp atomic
             value &= ~ONEHOT(i);
         }
         if(val&2) {
-            #pragma omp atomic
+            // #pragma omp atomic
             value1 |= ONEHOT(i);
         }
         else {
-            #pragma omp atomic
+            // #pragma omp atomic
             value1 &= ~ONEHOT(i);
         }
         return *this;
@@ -223,11 +223,15 @@ public:
         return *this;
     }
 
-    static double sup() {
+    static int sup() {
         return 3;
     }
+    
+    static int eps() {
+        return 1;
+    }
 
-    static double inf() {
+    static int inf() {
         return 0;
     }
 
@@ -250,11 +254,11 @@ public:
     const int absmax() const {
         int ret = 0;
         VECTOR v = value;
-        if(value1) {
+        if(ANY(value1)) {
             ret += 2;
             v &= value1;
         }
-        if(v)
+        if(ANY(v))
             ret += 1;
         return ret;
     }

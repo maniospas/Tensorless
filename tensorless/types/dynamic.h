@@ -167,6 +167,10 @@ public:
         return Dynamic<Number>(value*other.value, mantisa*other.mantisa);
     }
 
+    Dynamic<Number> operator*(const double &other) const {
+        return Dynamic<Number>(value, mantisa*other);
+    }
+
 };
 
 }

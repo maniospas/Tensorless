@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#ifndef Int3_H
-#define Int3_H
+#ifndef INT3_H
+#define INT3_H
 
 #include <iostream>
 #include <vector>
@@ -24,18 +24,37 @@ limitations under the License.
 #include <random>
 #include "../vecutils.h"
 
-
 namespace tensorless {
+
 class Int3 {
 private:
     VECTOR value;
     VECTOR value1;
     VECTOR value2;
     explicit Int3(VECTOR v, VECTOR v1, VECTOR v2) : value(v), value1(v1), value2(v2) {}
+
 public:
-    static Int3 random() {return Int3(lrand(), lrand(), lrand());}
+    static Int3 random() {
+        return Int3(lrand(), lrand(), lrand());
+    }
+
     static Int3 broadcast(int val) {
-        return Int3(val&1?~(VECTOR)0:0, val&2?~(VECTOR)0:0, val&4?~(VECTOR)0:0);
+        if (val < 0 || val > 7) {
+            throw std::logic_error("can only set values in range [0,7], given " + std::to_string(val));
+        }
+        VECTOR value = 0, value1 = 0, value2 = 0;
+        if (val >= 4) {
+            value2 = ~value2;
+            val -= 4;
+        }
+        if (val >= 2) {
+            value1 = ~value1;
+            val -= 2;
+        }
+        if (val) {
+            value = ~value;
+        }
+        return Int3(value, value1, value2);
     }
 
     static int num_params() {
@@ -43,18 +62,20 @@ public:
     }
     
     static int num_bits() {
-        return 3*VECTOR_SIZE;
+        return 3 * VECTOR_SIZE;
     }
 
     Int3(const std::vector<int>& vec) : value(0), value1(0), value2(0) {
-        for (int i = 0; i < vec.size(); ++i) 
-            if (vec[i]) 
+        for (int i = 0; i < vec.size(); ++i) {
+            if (vec[i]) {
                 set(i, vec[i]);
+            }
+        }
     }
     
     Int3(const Int3 &other) : value(other.value), value1(other.value1), value2(other.value2) {}
     
-    Int3() : value(0) {}
+    Int3() : value(0), value1(0), value2(0) {}
 
     Int3 zerolike() const {
         return Int3();
@@ -62,11 +83,11 @@ public:
 
     Int3 zerolike(const VECTOR& mask) const {
         VECTOR notmask = ~mask;
-        return Int3(value&notmask, value1&notmask, value2&notmask);
+        return Int3(value & notmask, value1 & notmask, value2 & notmask);
     }
 
-    const int size() const {
-        return sizeof(VECTOR)*8;
+    int size() const {
+        return sizeof(VECTOR) * 8;
     }
 
     Int3& operator=(const Int3 &other) {
@@ -79,89 +100,94 @@ public:
     }
 
     explicit operator bool() const {
-        return (bool)value || (bool)value1 || (bool)value2;
+        return ANY(value) || ANY(value1) || ANY(value2);
     }
 
     friend std::ostream& operator<<(std::ostream &os, const Int3 &si) {
         os << "[" << si.get(0);
-        for(int i=1;i<si.size();i++)
+        for(int i = 1; i < si.size(); ++i) {
             os << "," << si.get(i);
+        }
         os << "]";
         return os;
     }
 
-    const Int3& print(const std::string& text="") const {
+    const Int3& print(const std::string& text = "") const {
         std::cout << text << *this << "\n";
         return *this;
     }
 
-    const bool isZeroAt(int i) {
+    bool isZeroAt(int i) const {
         VECTOR a = value | value1 | value2;
-        return (a >> i) & 1;
+        return GETAT(a, i);
     }
 
-    const int sum() {
-        return bitcount(value) + bitcount(value1)*2 + bitcount(value2)*4;
+    int sum() const {
+        return bitcount(value) + (bitcount(value1) << 1) + (bitcount(value2) << 2);
     }
 
-    const int sum(VECTOR mask) {
-        return bitcount(value&mask) + bitcount(value1&mask)*2 + bitcount(value2&mask)*4;
+    int sum(VECTOR mask) const {
+        return bitcount(value & mask) + (bitcount(value1 & mask) << 1) + (bitcount(value2 & mask) << 2);
     }
     
-    const int get(int i) const {
-        return ((value >> i) & 1) + ((value1 >> i) & 1)*2 + ((value2 >> i) & 1)*4;
+    int get(int i) const {
+        return GETAT(value, i) + (GETAT(value1, i) << 1) + (GETAT(value2, i) << 2);
     }
 
-    template <typename RetNumber> RetNumber applyHalf(const RetNumber &number) const {
+
+    Int3 half() const {
+        return Int3(value1, value2, 0);
+    }
+
+    template <typename RetNumber>
+    RetNumber applyHalf(const RetNumber &number) const {
         return number.half(value2).half(value2).half(value1);
     }
 
-    template <typename RetNumber> RetNumber applyHalf(const RetNumber &number, const VECTOR &mask) const {
-        return number.half(value2&mask).half(value2&mask).half(value1&mask);
+    template <typename RetNumber>
+    RetNumber applyHalf(const RetNumber &number, const VECTOR &mask) const {
+        return number.half(value2 & mask).half(value2 & mask).half(value1 & mask);
     }
     
-    template <typename RetNumber> RetNumber applyTimes2(const RetNumber &number) const {
+    template <typename RetNumber>
+    RetNumber applyTimes2(const RetNumber &number) const {
         return number.times2(value2).times2(value2).times2(value1);
     }
 
-    template <typename RetNumber> RetNumber applyTimes2(const RetNumber &number, const VECTOR &mask) const {
-        return number.times2(value2&mask).times2(value2&mask).times2(value1&mask);
+    template <typename RetNumber>
+    RetNumber applyTimes2(const RetNumber &number, const VECTOR &mask) const {
+        return number.times2(value2 & mask).times2(value2 & mask).times2(value1 & mask);
     }
 
-    const Int3& set(int i, int val) {
-        if(size()<=i || i<0)
-            throw std::logic_error("out of of range");
-        if(val<0 || val>7)
-            throw std::logic_error("can only set values in range [0,7]");
-        if(val&1) {
-            #pragma omp atomic
-            value |= ONEHOT(i);
+    Int3& set(int i, int val) {
+        if (size() <= i || i < 0) {
+            throw std::logic_error("out of range");
         }
-        else {
-            #pragma omp atomic
+        if (val < 0 || val > 7) {
+            throw std::logic_error("can only set values in range [0,7], given " + std::to_string(val));
+        }
+        if (val & 1) {
+            // #pragma omp atomic
+            value |= ONEHOT(i);
+        } else {
+            // #pragma omp atomic
             value &= ~ONEHOT(i);
         }
-        if(val&2) {
-            #pragma omp atomic
+        if (val & 2) {
+            // #pragma omp atomic
             value1 |= ONEHOT(i);
-        }
-        else {
-            #pragma omp atomic
+        } else {
+            // #pragma omp atomic
             value1 &= ~ONEHOT(i);
         }
-        if(val&4) {
-            #pragma omp atomic
+        if (val & 4) {
+            // #pragma omp atomic
             value2 |= ONEHOT(i);
-        }
-        else {
-            #pragma omp atomic
+        } else {
+            // #pragma omp atomic
             value2 &= ~ONEHOT(i);
         }
         return *this;
-    }
-
-    int operator[](int i) {
-        return get(i);
     }
 
     int operator[](int i) const {
@@ -173,121 +199,122 @@ public:
         return *this;
     }
 
-    int countNonZeros() { 
+    int countNonZeros() const { 
         VECTOR n = value | value1 | value2;
         return bitcount(n);
     }
     
     Int3 operator~() const {
-        return Int3(~(value | value1 | value2), 0, 0);
+        return Int3(~value, ~value1, ~value2);
     }
     
     Int3 operator!=(const Int3 &other) const {
-        return Int3((other.value^value) | (other.value1^value1) | (other.value2^value2), 0, 0);
+        return Int3((other.value ^ value), (other.value1 ^ value1), (other.value2 ^ value2));
     }
 
     Int3 operator*(const Int3 &other) const {
-        return Int3(other.value&value, 
-                    (other.value1&value) | (other.value&value1),
-                    (other.value2&value) | (other.value&value2) | (other.value1&value1));
+        return Int3(other.value & value, 
+                    (other.value1 & value) | (other.value & value1),
+                    (other.value2 & value) | (other.value & value2) | (other.value1 & value1));
     }
  
     Int3 twosComplement(const VECTOR &mask) const {
         VECTOR notmask = ~mask;
-        return Int3(mask&~value | (notmask&value), 
-                      mask&~value1 | (notmask&value1),
-                      mask&~value2 | (notmask&value2)
-        ).addWithoutCarry(Int3(mask,0,0));
+        return Int3(mask & ~value | (notmask & value), 
+                    mask & ~value1 | (notmask & value1),
+                    mask & ~value2 | (notmask & value2)
+        ).addWithoutCarry(Int3(mask, 0, 0));
     }
     
     Int3 twosComplement() const {
-        return Int3(~value, ~value1, ~value2).addWithoutCarry(Int3(~(VECTOR)0,0,0));
+        return Int3(~value, ~value1, ~value2).addWithoutCarry(Int3(~(VECTOR)0, 0, 0));
     }
 
     Int3 twosComplementWithCarry(const VECTOR &mask, VECTOR &carry) const {
         VECTOR notmask = ~mask;
-        return Int3(mask&~value | (notmask&value), 
-                      mask&~value1 | (notmask&value1),
-                      mask&~value2 | (notmask&value2)
-        ).addWithCarry(Int3(mask,0,0), carry);
+        return Int3(mask & ~value | (notmask & value), 
+                    mask & ~value1 | (notmask & value1),
+                    mask & ~value2 | (notmask & value2)
+        ).addWithCarry(Int3(mask, 0, 0), carry);
     }
     
-    Int3 twosComplement(VECTOR &carry) const {
-        return Int3(~value, ~value1, ~value2).addWithCarry(Int3(~(VECTOR)0,0,0), carry);
+    Int3 twosComplementWithCarry(VECTOR &carry) const {
+        return Int3(~value, ~value1, ~value2).addWithCarry(Int3(~(VECTOR)0, 0, 0), carry);
     }
 
     Int3 addWithoutCarry(const Int3 &other) const {
-        VECTOR carry = other.value&value;
+        VECTOR carry = value & other.value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
-        return Int3(other.value^value, 
-                    other.value1^value1^carry,
-                    other.value2^value2^carry1
-                    );
+        return Int3(value ^ other.value, 
+                    value1 ^ other.value1 ^ carry,
+                    value2 ^ other.value2 ^ carry1);
     }
 
     Int3 addWithCarry(const Int3 &other, VECTOR &lastcarry) const {
-        VECTOR carry = other.value&value;
+        VECTOR carry = value & other.value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
-        lastcarry = (value2 & other.value2) | (carry & (value2 ^ other.value2));
-        return Int3(other.value^value, 
-                    other.value1^value1^carry,
-                    other.value2^value2^carry1
-                    );
+        lastcarry = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
+        return Int3(value ^ other.value, 
+                    value1 ^ other.value1 ^ carry,
+                    value2 ^ other.value2 ^ carry1);
     }
 
     Int3 operator+(const Int3 &other) const {
-        VECTOR carry = other.value&value;
+        VECTOR carry = value & other.value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
-        return Int3(other.value^value, 
-                    other.value1^value1^carry,
-                    other.value2^value2^carry1
-                    );
+        return Int3(value ^ other.value, 
+                    value1 ^ other.value1 ^ carry,
+                    value2 ^ other.value2 ^ carry1);
     }
 
-    const Int3& operator+=(const Int3 &other) {
-        VECTOR carry = other.value&value;
+    Int3& operator+=(const Int3 &other) {
+        VECTOR carry = value & other.value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
-        value = other.value^value;
-        value1 = other.value1^value1^carry;
-        value2 = other.value2^value2^carry1;
+        value ^= other.value;
+        value1 ^= other.value1 ^ carry;
+        value2 ^= other.value2 ^ carry1;
         return *this;
     }
 
-    const Int3& operator*=(const Int3 &other) {
-        value2 = (other.value2&value) | (other.value&value2) | (other.value1&value1);
-        value1 = (other.value1&value) | (other.value&value1);
-        value = other.value&value; 
+    Int3& operator*=(const Int3 &other) {
+        value2 = (other.value2 & value) | (other.value & value2) | (other.value1 & value1);
+        value1 = (other.value1 & value) | (other.value & value1);
+        value &= other.value; 
         return *this;
     }
 
-    static double sup() {
+    static int sup() {
         return 7;
     }
 
-    static double inf() {
+    static int eps() {
+        return 1;
+    }
+
+    static int inf() {
         return 0;
     }
 
-    const int absmax() const {
+    int absmax() const {
         int ret = 0;
         VECTOR v1 = value1;
         VECTOR v = value;
-        if(value2) {
+        if (ANY(value2)) {
             ret += 4;
             v1 &= value2;
             v &= value2;
         }
-        if(v1) {
+        if (ANY(v1)) {
             ret += 2;
             v &= v1;
         }
-        if(v)
+        if (ANY(v)) {
             ret += 1;
+        }
         return ret;
     }
 };
 
+} // namespace tensorless
 
-}
-
-#endif // Int3_H
+#endif // INT3_H

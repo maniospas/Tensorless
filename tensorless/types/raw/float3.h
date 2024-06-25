@@ -81,12 +81,12 @@ public:
     }
     
     explicit operator bool() const {
-        return (bool)(value) || (bool)value1 || (bool)value2;
+        return ANY(value) || ANY(value1) || ANY(value2);
     }
 
     Float3 times2() {
         #ifdef DEBUG_OVERFLOWS
-        if(value2)
+        if(ANY(value2))
             throw std::logic_error("arithmetic overflow");
         #endif
         return Float3(0, value, value1);
@@ -115,39 +115,49 @@ public:
 
     const bool isZeroAt(int i) {
         VECTOR a = value | value1 | value2;
-        return (a >> i) & 1;
+        return GETAT(a, i);
     }
 
     const double absmax() const {
-        double ret = 0;
+        int ret = 0;
         VECTOR v1 = value1;
         VECTOR v = value;
-        if(value2) {
-            ret += 1;
+        if(ANY(value2)) {
+            ret += 4;
             v1 &= value2;
             v &= value2;
         }
-        if(v1) {
-            ret += 0.5;
+        if(ANY(v1)) {
+            ret += 2;
             v &= v1;
         }
-        if(v)
-            ret += 0.25;
-        return ret;
+        if(ANY(v))
+            ret += 1;
+        return ret/4.0;
     }
 
+    
     const double sum() const {
-        return bitcount(value)/4.0 + bitcount(value1)/2.0 + bitcount(value2);
+        int ret = bitcount(value);
+        ret += bitcount(value1)*2;
+        ret += bitcount(value2)*4;
+        return ret/4.0;
     }
 
-    const double sum(VECTOR mask) const {
-        return bitcount(value&mask)/4.0 + bitcount(value1&mask)/2.0 + bitcount(value2&mask);
+    const double sum(const VECTOR &mask) const {
+        int ret = bitcount(value&mask);
+        ret += bitcount(value1&mask)*2;
+        ret += bitcount(value2&mask)*4;
+        return ret/4.0;
     }
 
     const double get(int i) const {
-        return ((value >> i) & 1)/4.0 + ((value1 >> i) & 1)/2.0 + ((value2 >> i) & 1);
+        int ret = GETAT(value, i);
+        ret += GETAT(value1, i)*2;
+        ret += GETAT(value2, i)*4;
+        return ret/4.0;
     }
-
+    
     const Float3& set(int i, double val) {
         if(size()<=i || i<0)
             throw std::logic_error("out of of range");
@@ -255,7 +265,7 @@ public:
         
         #ifdef DEBUG_OVERFLOWS
         VECTOR lastcarry = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
-        if(lastcarry)
+        if(ANY(lastcarry)) 
             throw std::logic_error("arithmetic overflow");
         #endif
 
@@ -271,7 +281,7 @@ public:
         
         #ifdef DEBUG_OVERFLOWS
         VECTOR lastcarry = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
-        if(lastcarry)
+        if(ANY(lastcarry))
             throw std::logic_error("arithmetic overflow");
         #endif
 
@@ -294,6 +304,10 @@ public:
 
     static double sup() {
         return 1.75;
+    }
+
+    static double eps() {
+        return 0.25;
     }
 
     static double inf() {

@@ -33,54 +33,58 @@ private:
     Number value;
     Signed(const Number &value, const VECTOR &isNeg) : value(value), isNegative(isNeg) {}
 public:
-    static Signed<Number> random() {
+    inline static Signed<Number> random() {
         VECTOR isNegative = lrand();
         return Signed(Number::random(), 0).twosComplement(isNegative);
     }
 
-    static Signed<Number> broadcast(double value) {
+    inline static Signed<Number> broadcast(double value) {
         if(value<0)
             return Signed(Number::broadcast(-value), 0).twosComplement();
         return Signed(Number::broadcast(value), 0);
     }
 
-    static int num_params() {
+    inline static int num_params() {
         return 1+Number::num_params();
     }
 
-    static int num_bits() {
+    inline static int num_bits() {
         return Number::num_bits() + VECTOR_SIZE;
     }
 
-    Signed<Number> times2() const {
+    inline Signed<Number> times2() const {
         Number abs = value.twosComplement(isNegative);
         return Signed(abs.times2().twosComplement(isNegative), isNegative);
     }
 
-    Signed<Number> half() const {
+    inline Signed<Number> half() const {
         Number abs = value.twosComplement(isNegative);
         return Signed(abs.half().twosComplement(isNegative), isNegative);
     }
 
-    Signed<Number> times2(const VECTOR &mask) const {
+    inline Signed<Number> times2(const VECTOR &mask) const {
         Number abs = value.twosComplement(isNegative);
         return Signed(abs.times2(mask).twosComplement(isNegative), isNegative);
     }
 
-    Signed<Number> half(const VECTOR &mask) const {
+    inline Signed<Number> half(const VECTOR &mask) const {
         Number abs = value.twosComplement(isNegative);
         return Signed(abs.half(mask).twosComplement(isNegative), isNegative);
     }
 
-    Signed<Number> zerolike() const {
+    inline Signed<Number> relu() const {
+        return zerolike(isNegative);
+    }
+
+    inline Signed<Number> zerolike() const {
         return Signed();
     }
 
-    Signed<Number> zerolike(const VECTOR &mask) const {
-        return Signed(value.zerolike(mask), isNegative&~mask);
+    inline Signed<Number> zerolike(const VECTOR &mask) const {
+        return Signed(value.zerolike(mask), isNegative);
     }
 
-    Signed<Number>& operator=(const Signed<Number>& other) {
+    inline Signed<Number>& operator=(const Signed<Number>& other) {
         if (this != &other) {
             this->value = other.value;
             this->isNegative = other.isNegative;
@@ -88,9 +92,9 @@ public:
         return *this;
     }
 
-    Signed(): isNegative(0) {}
+    inline Signed(): isNegative(0), value() {}
 
-    Signed(const std::vector<double>& vec) {
+    inline Signed(const std::vector<double>& vec) {
         value = Number();
         for (int i = 0; i < vec.size(); ++i) 
             if (vec[i]) {
@@ -98,90 +102,91 @@ public:
                     value.set(i, vec[i]);
                 else {
                     value.set(i, -vec[i]);
-                    isNegative |= ((VECTOR)1 << i);
+                    isNegative |= ONEHOT(i);
                 }
             }
         value = value.twosComplement(isNegative);
     }
 
-    static const double sup() {
+    inline static const double sup() {
         return Number::sup();
     }
 
-    static const double inf() {
+    inline static const double inf() {
         return -Number::sup();
     }
 
-    const double sum() const {
+    inline const double sum() const {
         return value.sum(~isNegative) - value.twosComplement(isNegative).sum(isNegative);
     }
 
-    const double sum(VECTOR mask) const {
+    inline const double sum(VECTOR mask) const {
         return value.sum(~isNegative&mask) - value.twosComplement(isNegative).sum(isNegative&mask);
     }
 
-    const double absmax() const {
+    inline const double absmax() const {
         return value.twosComplement(isNegative).absmax();
     }
 
-    const double get(int i) const {
-        if((isNegative >> i) & 1) {
-            return -value.twosComplement(isNegative).get(i);
+    inline const double get(int i) const {
+        if(GETAT(isNegative, i)) {
+            return value.get(i)-(Number::sup()+Number::eps());
         }
         return value.get(i);
     }
 
-    Signed<Number> set(int i, int val) {
-        VECTOR applyNegative = ((VECTOR)1 << i);
+    inline Signed<Number> set(int i, int val) {
+        VECTOR applyNegative = ONEHOT(i);
         if(val<0) {
-            value.set(i, -val);
-            VECTOR carry;
-            value = value.twosComplementWithCarry(applyNegative, carry);
-            #pragma omp atomic
-            isNegative |= applyNegative ^ carry;
+            value.set(i, Number::sup()+Number::eps()+val);
+            //VECTOR carry;
+            //value = value.twosComplementWithCarry(applyNegative, carry);
+            // #pragma omp atomic
+            isNegative |= applyNegative;// ^ carry;
         }
         else {
             value.set(i, val);
-            #pragma omp atomic
+            // #pragma omp atomic
             isNegative &= ~applyNegative;
         }
         return *this;
     }
 
-    Signed<Number> set(int i, double val) {
-        VECTOR applyNegative = ((VECTOR)1 << i);
+    inline Signed<Number> set(int i, double val) {
+        VECTOR applyNegative = ONEHOT(i);
         if(val<0) {
-            value.set(i, -val);
-            value = value.twosComplement(applyNegative);
-            #pragma omp atomic
+            value.set(i, Number::sup()+Number::eps()+val);
+            //value.set(i, -val);
+            //value = value.twosComplement(applyNegative);
+            // #pragma omp atomic
             isNegative |= applyNegative;
         }
         else {
             value.set(i, val);
-            #pragma omp atomic
+            // #pragma omp atomic
             isNegative &= ~applyNegative;
         }
         return *this;
     }
 
-    double operator[](int i) {
+    inline double operator[](int i) {
         return get(i);
     }
 
-    double operator[](int i) const {
+    inline double operator[](int i) const {
         return get(i);
     }
     
-    Signed<Number>& operator[](std::pair<int, double> p) {
+    inline Signed<Number>& operator[](std::pair<int, double> p) {
         set(p.first, p.second);
         return *this;
     }
 
-    int size() const {
+    inline int size() const {
         return value.size();
     }
 
-    friend std::ostream& operator<<(std::ostream &os, const Signed<Number> &si) {
+    inline friend std::ostream& operator<<(std::ostream &os, const Signed<Number> &si) {
         os << "[" << si.get(0);
         for(int i=1;i<10;i++)
             os << "," << si.get(i);
@@ -189,68 +194,78 @@ public:
         return os;
     }
 
-    Signed<Number> addWithUnderflow(const Signed<Number> &other, VECTOR& underflow) const {
+    inline Signed<Number> addWithUnderflow(const Signed<Number> &other, VECTOR& underflow) const {
         VECTOR carryOut;
         Number result = value.addWithCarry(other.value, carryOut);
         VECTOR finalSign = isNegative ^ other.isNegative ^ carryOut;
         underflow = isNegative & other.isNegative & ~finalSign;
+        #ifdef DEBUG_OVERFLOWS
+            if(ANY(~isNegative & ~other.isNegative & finalSign))
+                throw std::logic_error("arithmetic overflow");
+        #endif
         return Signed(result, finalSign);
     }
 
-    Signed<Number> operator+(const Signed<Number> &other) const {
+    inline Signed<Number> operator+(const Signed<Number> &other) const {
         VECTOR carryOut;
         Number result = value.addWithCarry(other.value, carryOut);
         VECTOR finalSign = isNegative ^ other.isNegative ^ carryOut;
 
         // Detect overflow
         #ifdef DEBUG_OVERFLOWS
-        // Compute final sign after addition
-        //VECTOR finalSign = (isNegative & other.isNegative) | (~carryOut & signChange);
-        //VECTOR overflow = (isNegative & other.isNegative) | (carryOut & (isNegative ^ other.isNegative));
-
-        if (finalSign ^ carryOut) {
-            throw std::logic_error("arithmetic overflow");
+        VECTOR overflow = (finalSign ^ isNegative) & ~(isNegative ^ other.isNegative);
+        if (ANY(overflow)) {
+            throw std::logic_error("arithmetic overflow or underflow");
         }
         #endif
 
         return Signed(result, finalSign);
     }
 
-    Signed<Number> twosComplement() const {
+    inline Signed<Number> twosComplement() const {
         VECTOR negative;
-        Number complement = value.twosComplement(negative);
+        Number complement = value.twosComplementWithCarry(negative);
         return Signed(complement, negative ^ ~isNegative);
     }
 
-    Signed<Number> twosComplement(const VECTOR &mask) const {
+    inline Signed<Number> twosComplement(const VECTOR &mask) const {
         VECTOR negative;
         Number complement = value.twosComplementWithCarry(mask, negative);
         return Signed(complement, ((negative ^ ~isNegative)&mask) | (isNegative&~mask) );
     }
     
-    Signed<Number> operator-(const Signed<Number> &other) const {
+    inline Signed<Number> operator-(const Signed<Number> &other) const {
         return *this+other.twosComplement();
     }
 
-    Signed<Number> operator*(const Signed<Number> &other) const {
+    inline Signed<Number> operator*(const Signed<Number> &other) const {
         Number ret = value.twosComplement(isNegative)*other.value.twosComplement(other.isNegative);
         VECTOR neg = isNegative ^ other.isNegative;
         return Signed<Number>(ret.twosComplement(neg), neg);
     }
     
-    template <typename RetNumber> RetNumber applyShifts(const RetNumber &number) const {
+    template <typename RetNumber> inline RetNumber applyShifts(const RetNumber &number) const {
         return value.applyHalf(value.applyTimes2(number, ~isNegative), isNegative);
     }
 
-    template <typename RetNumber> RetNumber applyShifts(const RetNumber &number, const VECTOR &mask) const {
+    template <typename RetNumber> inline RetNumber applyShifts(const RetNumber &number, const VECTOR &mask) const {
         return value.applyHalf(value.applyTimes2(number, mask&~isNegative), mask&isNegative);
     }
 
-    Number nonNegatives() const {
+    
+    template <typename RetNumber> inline RetNumber applyHalf(const RetNumber &number) const {
+        return value.applyHalf(number, ~isNegative);
+    }
+
+    template <typename RetNumber> inline RetNumber applyHalf(const RetNumber &number, const VECTOR &mask) const {
+        return value.applyHalf(number, mask&~isNegative);
+    }
+
+    inline Number nonNegatives() const {
         return value.zerolike(~isNegative);
     }
 
-    Number negatives() const {
+    inline Number negatives() const {
         return value.zerolike(isNegative);
     }
 };

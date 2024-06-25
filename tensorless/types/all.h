@@ -20,25 +20,32 @@ limitations under the License.
 #include "vecutils.h"
 #include "raw/int2.h"
 #include "raw/int3.h"
+#include "raw/int4.h"
 #include "raw/float3.h"
 #include "raw/float4.h"
 #include "raw/float5.h"
 #include "raw/float8.h"
 #include "signed.h"
 #include "dynamic.h"
+#include "floating.h"
 
 namespace tensorless {
-    typedef Signed<Int2> SInt2;
-    typedef Signed<Int3> SInt3;
+    typedef Signed<Int2> int2;
+    typedef Signed<Int3> int3;
+    typedef Signed<Int4> int4;
+    
     typedef Signed<Float3> SFloat3;
     typedef Signed<Float4> SFloat4;
     typedef Signed<Float5> SFloat5;
     typedef Signed<Float8> SFloat8;
 
-    typedef Dynamic<SFloat3> float3;
-    typedef Dynamic<SFloat4> float4;
-    typedef Dynamic<SFloat5> float5;
-    typedef Dynamic<SFloat8> float8;
+    typedef Dynamic<SFloat3> dfloat3;
+    typedef Dynamic<SFloat4> dfloat4;
+    typedef Dynamic<SFloat5> dfloat5;
+    typedef Dynamic<SFloat8> dfloat8;
+    
+    typedef Floating<SFloat5, int3> float10; 
+    typedef Floating<SFloat8, int4> float14; 
 }
 
 #endif  // TENSORLESS_TYPES_H

@@ -70,7 +70,7 @@ public:
 
     Float4 times2() {
         #ifdef DEBUG_OVERFLOWS
-        if(value3)
+        if(ANY(value3))
             throw std::logic_error("arithmetic overflow");
         #endif
         return Float4(0, value, value1, value2);
@@ -101,7 +101,7 @@ public:
     }
     
     explicit operator bool() const {
-        return (bool)(value) || (bool)value1 || (bool)value2 || (bool)value3;
+        return ANY(value) || ANY(value1) || ANY(value2) || ANY(value3);
     }
 
     friend std::ostream& operator<<(std::ostream &os, const Float4 &si) {
@@ -123,44 +123,56 @@ public:
 
     const bool isZeroAt(int i) {
         VECTOR a = value | value1 | value2 | value3;
-        return (a >> i) & 1;
+        return GETAT(a, i);
     }
 
     const double absmax() const {
-        double ret = 0;
+        int ret = 0;
         VECTOR v2 = value2;
         VECTOR v1 = value1;
         VECTOR v = value;
-        if(value3) {
-            ret += 1;
+        if(ANY(value3)) {
+            ret += 8;
             v2 &= value3;
             v1 &= value3;
             v &= value3;
         }
-        if(v2) {
-            ret += 0.5;
+        if(ANY(v2)) {
+            ret += 4;
             v1 &= v2;
             v &= v2;
         }
-        if(v1) {
-            ret += 0.25;
+        if(ANY(v1)) {
+            ret += 2;
             v &= v1;
         }
-        if(v)
-            ret += 0.125;
-        return ret;
+        if(ANY(v))
+            ret += 1;
+        return ret/8.0;
     }
 
     const double sum() const {
-        return bitcount(value)/8.0 + bitcount(value1)/4.0 + bitcount(value2)/2.0 + bitcount(value3);
+        int ret = bitcount(value);
+        ret += bitcount(value1)*2;
+        ret += bitcount(value2)*4;
+        ret += bitcount(value3)*8;
+        return ret/8.0;
     }
 
-    const double sum(VECTOR mask) const {
-        return bitcount(value&mask)/8.0 + bitcount(value1&mask)/4.0 + bitcount(value2&mask)/2.0 + bitcount(value3&mask);
+    const double sum(const VECTOR &mask) const {
+        int ret = bitcount(value&mask);
+        ret += bitcount(value1&mask)*2;
+        ret += bitcount(value2&mask)*4;
+        ret += bitcount(value3&mask)*8;
+        return ret/8.0;
     }
 
     const double get(int i) const {
-        return ((value >> i) & 1)/8.0 + ((value1 >> i) & 1)/4.0 + ((value2 >> i) & 1)/2.0 + ((value3 >> i) & 1);
+        int ret = GETAT(value, i);
+        ret += GETAT(value1, i)*2;
+        ret += GETAT(value2, i)*4;
+        ret += GETAT(value3, i)*8;
+        return ret/8.0;
     }
 
     const Float4& set(int i, double val) {
@@ -284,7 +296,7 @@ public:
 
         #ifdef DEBUG_OVERFLOWS
         VECTOR lastcarry = (value3 & other.value3) | (carry2 & (value3 ^ other.value3));
-        if(lastcarry)
+        if(ANY(lastcarry)) 
             throw std::logic_error("arithmetic overflow");
         #endif
 
@@ -301,7 +313,7 @@ public:
         
         #ifdef DEBUG_OVERFLOWS
         VECTOR lastcarry = (value3 & other.value3) | (carry2 & (value3 ^ other.value3));
-        if(lastcarry)
+        if(ANY(lastcarry))
             throw std::logic_error("arithmetic overflow");
         #endif
 
@@ -326,6 +338,10 @@ public:
 
     static double sup() {
         return 1.875;
+    }
+
+    static double eps() {
+        return 0.125;
     }
 
     static double inf() {
