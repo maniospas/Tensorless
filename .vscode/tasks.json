@@ -13,6 +13,7 @@
                 "-finline-limit=1000",
                 "-o",
                 "${fileDirname}\\${fileBasenameNoExtension}.exe",
+                "-fearly-inlining",
                 //"-march=native",
                 //"-mtune=native"
             ],

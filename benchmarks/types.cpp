@@ -3,7 +3,7 @@
 #include <chrono>
 
 using namespace tensorless;
-typedef dfloat10 floatX; // change this to benchmark different datatypes
+typedef float14 floatX; // change this to benchmark different datatypes
 
 int main() {
     long N = 1000000;

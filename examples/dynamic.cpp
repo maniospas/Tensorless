@@ -2,9 +2,8 @@
 
 
 int main() {
-    // this test runs only on architectures that support int128
-    auto data1 = tensorless::float8().set(0, 2).set(1, 20).set(2, 35);
-    auto data2 = tensorless::float8().set(0, 0.5).set(1, -5).set(2, 20);
+    auto data1 = tensorless::float10().set(0, 2).set(1, 10).set(2, 15);
+    auto data2 = tensorless::float10().set(0, 0.5).set(1, -5).set(2, 20);
     auto add = data1-data2;
     std::cout << add<<"\n";
 

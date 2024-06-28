@@ -6,14 +6,16 @@
 **Language:** C++<br>
 **License:** Apache 2.0
 
-:warning: Mandatory compilation parameters: `-O2 -fopenmp` and, if `Float8` or its derivative types are used, `-finline-limit=400` or larger. 
+:warning: Mandatory compilation parameters: `-O2 -fopenmp -finline-limit=1000 -fearly-inlining`. All these are necessary for performant inlining.
 
 
 ## :fire: CPU vectorization
 
 - [x] Get GPU-like parallelization and speed in the CPU for quantized numbers.
 - [x] Copy-paste header installation.
+- [ ] Floating point formats.
 - [ ] Ready-to-use neural components.
+- [ ] Python interface.
 
 ## :rocket: Quickstart
 

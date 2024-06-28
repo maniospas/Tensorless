@@ -6,7 +6,7 @@ It has no external dependencies and can be used without the rest of the `tensorl
 **Author:** Emmanouil (Manios) Krasanakis<br>
 **License:** Apache 2.0
 
-:warning: Mandatory compilation parameters: `-O2 -fopenmp` and, if `Float8` or its derivative types are used, `-finline-limit=400` or larger.
+:warning: Mandatory compilation parameters: `-O2 -fopenmp -finline-limit=1000 -fearly-inlining`. All these are necessary for performant inlining.
 
 ## Quickstart
 
