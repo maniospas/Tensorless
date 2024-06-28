@@ -39,9 +39,9 @@ private:
     explicit Float8(VECTOR v, VECTOR v1, VECTOR v2, VECTOR v3, VECTOR v4, VECTOR v5, VECTOR v6, VECTOR v7) : 
         value(v), value1(v1), value2(v2), value3(v3), value4(v4), value5(v5), value6(v6), value7(v7) {}
 public:
-    static inline Float8 random() {return Float8(lrand(), lrand(), lrand(), lrand(), lrand(), lrand(), lrand(), 0);}
+    static inline __attribute__((always_inline)) Float8 random() {return Float8(lrand(), lrand(), lrand(), lrand(), lrand(), lrand(), lrand(), 0);}
     
-    static inline Float8 broadcast(double val) {
+    static inline __attribute__((always_inline)) Float8 broadcast(double val) {
         if(val<0 || val>2)
             throw std::logic_error("can only set values in range [0,2]");
         VECTOR value7 = 0;
@@ -86,18 +86,18 @@ public:
     }
 
 
-    inline Float8(const std::vector<double>& vec) : value(0), value1(0), value2(0), value3(0), value4(0), value5(0), value6(0), value7(0) {
+    inline __attribute__((always_inline)) Float8(const std::vector<double>& vec) : value(0), value1(0), value2(0), value3(0), value4(0), value5(0), value6(0), value7(0) {
         for (int i = 0; i < vec.size(); ++i) 
             if (vec[i]) 
                 set(i, vec[i]);
     }
     
-    inline Float8(const Float8 &other) : 
+    inline __attribute__((always_inline)) Float8(const Float8 &other) : 
         value(other.value), value1(other.value1), value2(other.value2), value3(other.value3), value4(other.value4), value5(other.value5), value6(other.value6), value7(other.value7) {}
     
-    inline Float8() : value(0), value1(0), value2(0), value3(0), value4(0), value5(0), value6(0), value7(0) {}
+    inline __attribute__((always_inline)) Float8() : value(0), value1(0), value2(0), value3(0), value4(0), value5(0), value6(0), value7(0) {}
 
-    inline Float8& operator=(const Float8 &other) {
+    inline __attribute__((always_inline)) Float8& operator=(const Float8 &other) {
         if (this != &other) {
             value = other.value;
             value1 = other.value1;
@@ -111,7 +111,7 @@ public:
         return *this;
     }
 
-    inline Float8 times2() const {
+    inline __attribute__((always_inline)) Float8 times2() const {
         #ifdef DEBUG_OVERFLOWS
         if(ANY(value7))
             throw std::logic_error("arithmetic overflow");
@@ -119,7 +119,7 @@ public:
         return Float8(0, value, value1, value2, value3, value4, value5, value6);
     }
 
-    inline Float8 times2(const VECTOR &mask) const {
+    inline __attribute__((always_inline)) Float8 times2(const VECTOR &mask) const {
         #ifdef DEBUG_OVERFLOWS
         if(ANY(value7 & mask))
             throw std::logic_error("arithmetic overflow");
@@ -136,11 +136,11 @@ public:
                       );
     }
 
-    inline Float8 half() const {
+    inline __attribute__((always_inline)) Float8 half() const {
         return Float8(value1, value2, value3, value4, value5, value6, value7, 0);
     }
 
-    inline Float8 half(const VECTOR &mask) const {
+    inline __attribute__((always_inline)) Float8 half(const VECTOR &mask) const {
         VECTOR notmask = ~mask;
         return Float8(
                       (mask & value1) | (value & notmask), 
@@ -152,21 +152,55 @@ public:
                       (mask & value7) | (value6 & notmask), 
                                          value7 & notmask);
     }
+    
+    inline __attribute__((always_inline)) Float8 quarter() const {
+        return Float8(value2, value3, value4, value5, value6, value7, 0, 0);
+    }
 
-    inline static int num_params() {
+    inline __attribute__((always_inline)) Float8 quarter(const VECTOR &mask) const {
+        VECTOR notmask = ~mask;
+        return Float8(
+                      (mask & value2) | (value & notmask), 
+                      (mask & value3) | (value1 & notmask), 
+                      (mask & value4) | (value2 & notmask), 
+                      (mask & value5) | (value3 & notmask), 
+                      (mask & value6) | (value4 & notmask), 
+                      (mask & value7) | (value5 & notmask), 
+                                         value6 & notmask, 
+                                         value7 & notmask);
+    }
+    
+    inline __attribute__((always_inline)) Float8 eighth() const {
+        return Float8(value3, value4, value5, value6, value7, 0, 0, 0);
+    }
+
+    inline __attribute__((always_inline)) Float8 eighth(const VECTOR &mask) const {
+        VECTOR notmask = ~mask;
+        return Float8(
+                      (mask & value3) | (value & notmask), 
+                      (mask & value4) | (value1 & notmask), 
+                      (mask & value5) | (value2 & notmask), 
+                      (mask & value6) | (value3 & notmask), 
+                      (mask & value7) | (value4 & notmask), 
+                                         value5 & notmask, 
+                                         value6 & notmask, 
+                                         value7 & notmask);
+    }
+
+    inline __attribute__((always_inline)) static int num_params() {
         return 8;
     }
 
-    inline static int num_bits() {
+    inline __attribute__((always_inline)) static int num_bits() {
         return 8*VECTOR_SIZE;
     }
     
-    inline explicit operator bool() const {
+    inline __attribute__((always_inline)) explicit operator bool() const {
         return ANY(value) || ANY(value1) || ANY(value2) || ANY(value3) 
             || ANY(value4) || ANY(value5) || ANY(value6) || ANY(value7);
     }
 
-    inline friend std::ostream& operator<<(std::ostream &os, const Float8 &si) {
+    inline __attribute__((always_inline)) friend std::ostream& operator<<(std::ostream &os, const Float8 &si) {
         os << "[" << si.get(0);
         for(int i=1;i<si.size();i++)
             os << "," << si.get(i);
@@ -174,21 +208,21 @@ public:
         return os;
     }
 
-    inline const Float8& print(const std::string& text="") const {
+    inline __attribute__((always_inline)) const Float8& print(const std::string& text="") const {
         std::cout << text << *this << "\n";
         return *this;
     }
 
-    inline const int size() const {
+    inline __attribute__((always_inline)) const int size() const {
         return VECTOR_SIZE;
     }
 
-    inline const bool isZeroAt(int i) {
+    inline __attribute__((always_inline)) const bool isZeroAt(int i) {
         VECTOR a = value | value1 | value2 | value3 | value4 | value5 | value6 | value7;
         return GETAT(a, i);
     }
     
-    inline const double absmax() const {
+    inline __attribute__((always_inline)) const double absmax() const {
         int ret = 0;
         VECTOR mask = 0;
         if(ANY(value7)) {
@@ -235,7 +269,7 @@ public:
         return ret/128.0;
     }
 
-    inline const double sum() const {
+    inline __attribute__((always_inline)) const double sum() const {
         int ret = bitcount(value);
         ret += bitcount(value1)*2;
         ret += bitcount(value2)*4;
@@ -247,7 +281,7 @@ public:
         return ret/128.0;
     }
 
-    inline const double sum(const VECTOR &mask) const {
+    inline __attribute__((always_inline)) const double sum(const VECTOR &mask) const {
         int ret = bitcount(value & mask);
         ret += bitcount(value1 & mask)*2;
         ret += bitcount(value2 & mask)*4;
@@ -259,7 +293,7 @@ public:
         return ret/128.0;
     }
     
-    inline const double get(int i) const {
+    inline __attribute__((always_inline)) const double get(int i) const {
         int ret = GETAT(value, i);
         ret += GETAT(value1, i)*2;
         ret += GETAT(value2, i)*4;
@@ -271,7 +305,7 @@ public:
         return ret/128.0;
     }
 
-    inline const Float8& set(int i, double val) {
+    inline __attribute__((always_inline)) const Float8& set(int i, double val) {
         if(size()<=i || i<0)
             throw std::logic_error("out of of range");
         if(val<0 || val>2)
@@ -350,34 +384,34 @@ public:
         return *this;
     }
 
-    inline double operator[](int i) {
+    inline __attribute__((always_inline)) double operator[](int i) {
         return get(i);
     }
 
-    inline double operator[](int i) const {
+    inline __attribute__((always_inline)) double operator[](int i) const {
         return get(i);
     }
     
-    inline Float8& operator[](std::pair<int, double> p) {
+    inline __attribute__((always_inline)) Float8& operator[](std::pair<int, double> p) {
         set(p.first, p.second);
         return *this;
     }
 
-    inline int countNonZeros() { 
+    inline __attribute__((always_inline)) int countNonZeros() { 
         VECTOR n = value | value1 | value2 | value3 | value4 | value5 | value6 | value7;
         return bitcount(n);
     }
 
-    inline Float8 operator~() const {
+    inline __attribute__((always_inline)) Float8 operator~() const {
         return Float8(0, 0, 0, 0, 0, 0, 0, ~(value | value1 | value2 | value3 | value4 | value5 | value6 | value7));
     }
 
-    inline Float8 operator!=(const Float8 &other) const {
+    inline __attribute__((always_inline)) Float8 operator!=(const Float8 &other) const {
         return Float8(0, 0, 0, 0, 0, 0, 0, 
             (other.value^value) | (other.value1^value1) | (other.value2^value2) | (other.value3^value3) | (other.value4^value4) | (other.value5^value5) | (other.value6^value6) | (other.value7^value7));
     }
 
-    inline Float8 operator*(const Float8 &other) const {
+    inline __attribute__((always_inline)) Float8 operator*(const Float8 &other) const {
         Float8 ret = Float8();
         ret += Float8(value7&other.value, value7&other.value1, value7&other.value2, value7&other.value3, value7&other.value4, value7&other.value5, value7&other.value6, value7&other.value7);
         ret += Float8(value6&other.value1, value6&other.value2, value6&other.value3, value6&other.value4, value6&other.value5, value6&other.value6, value6&other.value7, 0);
@@ -391,7 +425,7 @@ public:
         return ret;
     }
 
-    inline Float8 addWithoutCarry(const Float8 &other) const {
+    inline __attribute__((always_inline)) Float8 addWithoutCarry(const Float8 &other) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -410,7 +444,7 @@ public:
                     );
     }
 
-    inline Float8 addWithCarry(const Float8 &other, VECTOR &lastcarry) const {
+    inline __attribute__((always_inline)) Float8 addWithCarry(const Float8 &other, VECTOR &lastcarry) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -430,7 +464,7 @@ public:
                     );
     }
 
-    inline Float8 twosComplement(const VECTOR &mask) const {
+    inline __attribute__((always_inline)) Float8 twosComplement(const VECTOR &mask) const {
         VECTOR notmask = ~mask;
         return Float8((mask&~value) | (notmask&value), 
                       (mask&~value1) | (notmask&value1),
@@ -443,17 +477,17 @@ public:
         ).addWithoutCarry(Float8(mask,0,0,0,0,0,0,0));
     }
 
-    inline Float8 twosComplement() const {
+    inline __attribute__((always_inline)) Float8 twosComplement() const {
         return Float8(~value, ~value1, ~value2, ~value3, ~value4, ~value5, ~value6, ~value7)
             .addWithoutCarry(Float8(~(VECTOR)0,0,0,0,0,0,0,0));
     }
 
-    inline Float8 twosComplementWithCarry(VECTOR& carry) const {
+    inline __attribute__((always_inline)) Float8 twosComplementWithCarry(VECTOR& carry) const {
         return Float8(~value, ~value1, ~value2, ~value3, ~value4, ~value5, ~value6, ~value7)
             .addWithCarry(Float8(~(VECTOR)0,0,0,0,0,0,0,0), carry);
     }
     
-    inline Float8 twosComplementWithCarry(const VECTOR &mask, VECTOR& carry) const {
+    inline __attribute__((always_inline)) Float8 twosComplementWithCarry(const VECTOR &mask, VECTOR& carry) const {
         VECTOR notmask = ~mask;
         return Float8((mask&~value) | (notmask&value), 
                       (mask&~value1) | (notmask&value1),
@@ -466,7 +500,7 @@ public:
         ).addWithCarry(Float8(mask,0,0,0,0,0,0,0), carry);
     }
 
-    inline Float8 operator+(const Float8 &other) const {
+    inline __attribute__((always_inline)) Float8 operator+(const Float8 &other) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -491,7 +525,7 @@ public:
                     other.value7^value7^carry6
                     );
     }
-    inline const Float8& operator+=(const Float8 &other) {
+    inline __attribute__((always_inline)) const Float8& operator+=(const Float8 &other) {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -517,7 +551,7 @@ public:
         return *this;
     }
     
-    inline const Float8& operator*=(const Float8 &other) {
+    inline __attribute__((always_inline)) const Float8& operator*=(const Float8 &other) {
         Float8 ret = Float8();
         ret += Float8(value7&other.value, value7&other.value1, value7&other.value2, value7&other.value3, value7&other.value4, value7&other.value5, value7&other.value6, value7&other.value7);
         ret += Float8(value6&other.value1, value6&other.value2, value6&other.value3, value6&other.value4, value6&other.value5, value6&other.value6, value6&other.value7, 0);
@@ -538,7 +572,7 @@ public:
         return *this;
     }
 
-    inline static double sup() {
+    inline __attribute__((always_inline)) static double sup() {
         return 1.9921875;
     }
     
@@ -546,15 +580,15 @@ public:
         return 0.0078125;
     }
 
-    inline static double inf() {
+    inline __attribute__((always_inline)) static double inf() {
         return 0;
     }
 
-    inline Float8 zerolike() const {
+    inline __attribute__((always_inline)) Float8 zerolike() const {
         return Float8();
     }
 
-    inline Float8 zerolike(const VECTOR& mask) const {
+    inline __attribute__((always_inline)) Float8 zerolike(const VECTOR& mask) const {
         VECTOR notmask = ~mask;
         return Float8(value&notmask, value1&notmask, value2&notmask, value3&notmask, value4&notmask, value5&notmask, value6&notmask, value7&notmask);
     }

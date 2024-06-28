@@ -76,8 +76,43 @@ public:
         return Float4(0, value, value1, value2);
     }
 
-    Float4 half() {
+    inline __attribute__((always_inline)) Float4 half() const {
         return Float4(value1, value2, value3, 0);
+    }
+
+    inline __attribute__((always_inline)) Float4 half(const VECTOR &mask) const {
+        VECTOR notmask = ~mask;
+        return Float4(
+                      (mask & value1) | (value & notmask), 
+                      (mask & value2) | (value1 & notmask), 
+                      (mask & value3) | (value2 & notmask), 
+                                         value3 & notmask);
+    }
+    
+    inline __attribute__((always_inline)) Float4 quarter() const {
+        return Float4(value2, value3, 0, 0);
+    }
+
+    inline __attribute__((always_inline)) Float4 quarter(const VECTOR &mask) const {
+        VECTOR notmask = ~mask;
+        return Float4(
+                      (mask & value2) | (value & notmask), 
+                      (mask & value3) | (value1 & notmask), 
+                                         value2 & notmask, 
+                                         value3 & notmask);
+    }
+    
+    Float4 eighth() const {
+        return Float4(value3, 0, 0, 0);
+    }
+
+    inline __attribute__((always_inline)) Float4 eighth(const VECTOR &mask) const {
+        VECTOR notmask = ~mask;
+        return Float4(
+                      (mask & value3) | (value & notmask), 
+                                         value1 & notmask, 
+                                         value2 & notmask, 
+                                         value3 & notmask);
     }
 
     Float4(const std::vector<double>& vec) : value(0), value1(0), value2(0), value3(0) {

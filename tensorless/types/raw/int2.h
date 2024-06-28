@@ -32,10 +32,14 @@ private:
     VECTOR value1;
     explicit Int2(VECTOR v, VECTOR v1) : value(v), value1(v1) {}
 public:
-    static Int2 random() {return Int2(lrand(), lrand());}
+    static Int2 random() {return Int2(lrand(), 0);}
     static Int2 broadcast(double value) {
         int val = (int)value;
         return Int2(val&1?~(VECTOR)0:0, val&2?~(VECTOR)0:0);
+    }
+
+    inline __attribute__((always_inline)) static Int2 broadcastOnes(const VECTOR &mask) {
+        return Int2(mask, 0);
     }
 
     static int num_params() {
@@ -54,7 +58,7 @@ public:
     
     Int2(const Int2 &other) : value(other.value), value1(other.value1) {}
     
-    Int2() : value(0) {}
+    Int2() : value(0), value1(0) {}
 
     const int size() const {
         return sizeof(VECTOR)*8;
@@ -107,21 +111,22 @@ public:
             throw std::logic_error("out of of range");
         if(val<0 || val>3)
             throw std::logic_error("can only set values in range [0,3]");
-        if(val&1) {
+        if(val>=2) {
+            // #pragma omp atomic
+            value1 |= ONEHOT(i);
+            val -= 2;
+        }
+        else {
+            // #pragma omp atomic
+            value1 &= ~ONEHOT(i);
+        }
+        if(val) {
             // #pragma omp atomic
             value |= ONEHOT(i);
         }
         else {
             // #pragma omp atomic
             value &= ~ONEHOT(i);
-        }
-        if(val&2) {
-            // #pragma omp atomic
-            value1 |= ONEHOT(i);
-        }
-        else {
-            // #pragma omp atomic
-            value1 &= ~ONEHOT(i);
         }
         return *this;
     }
@@ -139,62 +144,62 @@ public:
         return *this;
     }
 
-    Int2 zerolike() const {
+    inline __attribute__((always_inline)) Int2 zerolike() const {
         return Int2();
     }
 
-    Int2 zerolike(const VECTOR& mask) const {
+    inline __attribute__((always_inline)) Int2 zerolike(const VECTOR& mask) const {
         VECTOR notmask = ~mask;
         return Int2(value&notmask, value1&notmask);
     }
 
-    int countNonZeros() { 
+    inline __attribute__((always_inline)) int countNonZeros() { 
         VECTOR n = value | value1;
         return bitcount(n);
     }
     
-    Int2 operator~() const {
+    inline __attribute__((always_inline)) Int2 operator~() const {
         return Int2(~(value | value1), 0);
     }
     
-    Int2 operator!=(const Int2 &other) const {
+    inline __attribute__((always_inline)) Int2 operator!=(const Int2 &other) const {
         return Int2((other.value^value) | (other.value1^value1), 0);
     }
 
-    Int2 operator*(const Int2 &other) const {
+    inline __attribute__((always_inline)) Int2 operator*(const Int2 &other) const {
         return Int2(other.value&value, (other.value1&value) | (other.value&value1));
     }
 
-    Int2 addWithoutCarry(const Int2 &other) const {
+    inline __attribute__((always_inline)) Int2 addWithoutCarry(const Int2 &other) const {
         VECTOR carry = other.value&value;
         return Int2(other.value^value, 
                     other.value1^value1^carry
                     );
     }
  
-    Int2 twosComplement(const VECTOR &mask) const {
+    inline __attribute__((always_inline)) Int2 twosComplement(const VECTOR &mask) const {
         VECTOR notmask = ~mask;
         return Int2(mask&~value | (notmask&value), 
                       mask&~value1 | (notmask&value1)
         ).addWithoutCarry(Int2(mask,0));
     }
     
-    Int2 twosComplement() const {
+    inline __attribute__((always_inline)) Int2 twosComplement() const {
         return Int2(~value, ~value1).addWithoutCarry(Int2(~(VECTOR)0,0));
     }
 
-    Int2 twosComplementWithCarry(const VECTOR &mask, VECTOR &carry) const {
+    inline __attribute__((always_inline)) Int2 twosComplementWithCarry(const VECTOR &mask, VECTOR &carry) const {
         VECTOR notmask = ~mask;
         return Int2(mask&~value | (notmask&value), 
                       mask&~value1 | (notmask&value1)
         ).addWithCarry(Int2(mask,0), carry);
     }
     
-    Int2 twosComplement(VECTOR &carry) const {
+    inline __attribute__((always_inline)) Int2 twosComplementWithCarry(VECTOR &carry) const {
         return Int2(~value, ~value1).addWithCarry(Int2(~(VECTOR)0,0), carry);
     }
 
-    Int2 addWithCarry(const Int2 &other, VECTOR &lastcarry) const {
+    inline __attribute__((always_inline)) Int2 addWithCarry(const Int2 &other, VECTOR &lastcarry) const {
         VECTOR carry = other.value&value;
         lastcarry = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         return Int2(other.value^value, 
@@ -202,14 +207,35 @@ public:
                     );
     }
 
-    Int2 operator+(const Int2 &other) const {
+    inline __attribute__((always_inline)) Int2 maximum(const Int2 &other) const {
+        VECTOR vSelector = value1 & ~other.value1;
+        VECTOR v1 = value1 | other.value1;
+        VECTOR v = (vSelector&value) | (other.value & ~vSelector);
+        return Int2(v, v1);
+    }
+
+    inline __attribute__((always_inline)) Int2 minimum(const Int2 &other) const {
+        VECTOR vSelector = ~value1 & other.value1;
+        VECTOR v1 = value1 & other.value1;
+        VECTOR v = (vSelector&value) | (other.value & ~vSelector);
+        return Int2(v, v1);
+    }
+
+    inline __attribute__((always_inline)) Int2 merge(const Int2 &other, const VECTOR &mask) const {
+        VECTOR notmask = ~mask;
+        return Int2((value&mask) | (other.value & notmask), 
+                    (value1&mask) | (other.value1 & notmask)
+                    );
+    }
+
+    inline __attribute__((always_inline)) Int2 operator+(const Int2 &other) const {
         VECTOR carry = other.value&value;
         return Int2(other.value^value, 
                     other.value1^value1^carry
                     );
     }
 
-    const Int2& operator+=(const Int2 &other) {
+    inline __attribute__((always_inline)) const Int2& operator+=(const Int2 &other) {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         value = other.value^value;
@@ -217,41 +243,45 @@ public:
         return *this;
     }
 
-    const Int2& operator*=(const Int2 &other) {
+    inline __attribute__((always_inline)) const Int2& operator*=(const Int2 &other) {
         value1 = (other.value1&value) | (other.value&value1);
         value = other.value&value; 
         return *this;
     }
 
-    static int sup() {
+    inline __attribute__((always_inline)) static int sup() {
         return 3;
     }
     
-    static int eps() {
+    inline __attribute__((always_inline)) static int eps() {
         return 1;
     }
 
-    static int inf() {
+    inline __attribute__((always_inline)) static int inf() {
         return 0;
     }
 
-    template <typename RetNumber> RetNumber applyHalf(const RetNumber &number) {
-        return number.half(value1);
+    template <typename RetNumber> inline __attribute__((always_inline)) RetNumber applyHalf(const RetNumber &number) const {
+        return number.quarter(value1).half(value);
     }
 
-    template <typename RetNumber> RetNumber applyHalf(const RetNumber &number, const VECTOR &mask) {
-        return number.half(value1&mask);
+    template <typename RetNumber> inline __attribute__((always_inline)) RetNumber applyHalf(const RetNumber &number, const VECTOR &mask) const {
+        return number.quarter(value1&mask).half(value&mask);
     }
 
-    template <typename RetNumber> RetNumber applyTimes2(const RetNumber &number) const {
+    template <typename RetNumber> RetNumber inline __attribute__((always_inline)) applyTimes2(const RetNumber &number) const {
         return number.times2(value1);
     }
 
-    template <typename RetNumber> RetNumber applyTimes2(const RetNumber &number, const VECTOR &mask) const {
+    template <typename RetNumber> RetNumber inline __attribute__((always_inline)) applyTimes2(const RetNumber &number, const VECTOR &mask) const {
         return number.times2(value1&mask);
     }
+    
+    inline __attribute__((always_inline)) Int2 half() const {
+        return Int2(value1, 0);
+    }
 
-    const int absmax() const {
+    inline __attribute__((always_inline)) const int absmax() const {
         int ret = 0;
         VECTOR v = value;
         if(ANY(value1)) {

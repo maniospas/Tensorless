@@ -103,7 +103,7 @@ public:
 
     // operations
     const double sum() const {
-        return 0;
+        return value.sum();
     }
     
 
@@ -126,25 +126,24 @@ public:
     */
 
     Floating<Number, Mantisa> operator+(const Floating<Number, Mantisa> &other) const {
-        Mantisa selfDiff = (mantisa-other.mantisa).relu();
-        Mantisa otherDiff = (other.mantisa-other.mantisa).relu();
-
+        Mantisa diff = mantisa-other.mantisa;
+        Mantisa selfDiff = diff.relu();
+        Mantisa otherDiff = diff.twosComplement().relu();
         Number selfValue = otherDiff.applyHalf(value);
         Number otherValue = selfDiff.applyHalf(other.value);
 
-        Mantisa absDiff = selfDiff+otherDiff;
+        return Floating<Number, Mantisa>((selfValue+otherValue).half(), 
+                                         mantisa.maximum(other.mantisa)+Mantisa::broadcastOnes(~(VECTOR)0));
+    }
 
-        std::cout << "Mant1 "<<mantisa<<"\n";
-        std::cout << "Mant2 "<<other.mantisa<<"\n";
-        std::cout << "Absdiff1 "<<mantisa-other.mantisa<<"\n";
-        std::cout << "Absdiff1 "<<selfDiff<<"\n";
-        std::cout << "Max "<<(mantisa+other.mantisa+absDiff).half()<<"\n";
-        std::cout << "Val1 "<<value<<"\n";
-        std::cout << "Val2 "<<other.value<<"\n";
-        std::cout << "Val1 "<<selfValue<<"\n";
-        std::cout << "Val2 "<<otherValue<<"\n";
+    Floating<Number, Mantisa> operator-(const Floating<Number, Mantisa> &other) const {
+        Mantisa diff = mantisa-other.mantisa;
+        Mantisa selfDiff = diff.relu();
+        Mantisa otherDiff = diff.twosComplement().relu();
+        Number selfValue = otherDiff.applyHalf(value);
+        Number otherValue = selfDiff.applyHalf(other.value);
 
-        return Floating<Number, Mantisa>(selfValue+otherValue, (mantisa+other.mantisa+absDiff).half());
+        return Floating<Number, Mantisa>(selfValue-otherValue, mantisa.maximum(other.mantisa));
     }
 
     Floating<Number, Mantisa> operator*(const Floating<Number, Mantisa> &other) const {
@@ -152,6 +151,12 @@ public:
         Mantisa newMantisa = mantisa.addWithUnderflow(other.mantisa, underflow);
         return Floating<Number, Mantisa>(value.zerolike(underflow)*other.value, newMantisa);
     }
+
+    
+    Floating<Number, Mantisa> operator*(const double other) const {
+        return *this+broadcast(other);
+    }
+
 
     Floating<Number, Mantisa>& operator=(const Floating<Number, Mantisa>& other) {
         if (this != &other) {

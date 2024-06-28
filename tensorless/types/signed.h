@@ -44,6 +44,10 @@ public:
         return Signed(Number::broadcast(value), 0);
     }
 
+    inline static Signed<Number> broadcastOnes(const VECTOR &mask) {
+        return Signed(Number::broadcastOnes(mask), 0);
+    }
+
     inline static int num_params() {
         return 1+Number::num_params();
     }
@@ -58,8 +62,21 @@ public:
     }
 
     inline Signed<Number> half() const {
-        Number abs = value.twosComplement(isNegative);
-        return Signed(abs.half().twosComplement(isNegative), isNegative);
+        //Number abs = value.twosComplement(isNegative);
+        //return Signed(abs.half().twosComplement(isNegative), isNegative);
+        return Signed(value.half(), isNegative);
+    }
+
+    inline Signed<Number> quarter() const {
+        //Number abs = value.twosComplement(isNegative);
+        //return Signed(abs.quarter().twosComplement(isNegative), isNegative);
+        return Signed(value.quarter(), isNegative);
+    }
+
+    inline Signed<Number> eighth() const {
+        //Number abs = value.twosComplement(isNegative);
+        //return Signed(abs.eighth().twosComplement(isNegative), isNegative);
+        return Signed(value.eighth(), isNegative);
     }
 
     inline Signed<Number> times2(const VECTOR &mask) const {
@@ -68,8 +85,21 @@ public:
     }
 
     inline Signed<Number> half(const VECTOR &mask) const {
-        Number abs = value.twosComplement(isNegative);
-        return Signed(abs.half(mask).twosComplement(isNegative), isNegative);
+        //Number abs = value.twosComplement(isNegative);
+        //return Signed(abs.half(mask).twosComplement(isNegative), isNegative);
+        return Signed(value.half(mask), isNegative);
+    }
+
+    inline Signed<Number> quarter(const VECTOR &mask) const {
+        //Number abs = value.twosComplement(isNegative);
+        //return Signed(abs.quarter(mask).twosComplement(isNegative), isNegative);
+        return Signed(value.quarter(mask), isNegative);
+    }
+
+    inline Signed<Number> eighth(const VECTOR &mask) const {
+        //Number abs = value.twosComplement(isNegative);
+        //return Signed(abs.eighth(mask).twosComplement(isNegative), isNegative);
+        return Signed(value.eighth(mask), isNegative);
     }
 
     inline Signed<Number> relu() const {
@@ -156,8 +186,6 @@ public:
         VECTOR applyNegative = ONEHOT(i);
         if(val<0) {
             value.set(i, Number::sup()+Number::eps()+val);
-            //value.set(i, -val);
-            //value = value.twosComplement(applyNegative);
             // #pragma omp atomic
             isNegative |= applyNegative;
         }
@@ -206,6 +234,18 @@ public:
         return Signed(result, finalSign);
     }
 
+    inline Signed<Number> minimum(const Signed<Number> &other) const {
+        Signed<Number> diff = *this-other;
+        VECTOR isNeg = diff.isNegative;
+        return Signed(value.merge(other.value, isNeg), (isNeg&isNegative) | (other.isNegative&~isNeg));
+    }
+
+    inline Signed<Number> maximum(const Signed<Number> &other) const {
+        Signed<Number> diff = *this-other;
+        VECTOR isNeg = ~diff.isNegative;
+        return Signed(value.merge(other.value, isNeg), (isNeg&isNegative) | (other.isNegative&~isNeg));
+    }
+
     inline Signed<Number> operator+(const Signed<Number> &other) const {
         VECTOR carryOut;
         Number result = value.addWithCarry(other.value, carryOut);
@@ -244,14 +284,13 @@ public:
         return Signed<Number>(ret.twosComplement(neg), neg);
     }
     
-    template <typename RetNumber> inline RetNumber applyShifts(const RetNumber &number) const {
+    /*template <typename RetNumber> inline RetNumber applyShifts(const RetNumber &number) const {
         return value.applyHalf(value.applyTimes2(number, ~isNegative), isNegative);
     }
 
     template <typename RetNumber> inline RetNumber applyShifts(const RetNumber &number, const VECTOR &mask) const {
         return value.applyHalf(value.applyTimes2(number, mask&~isNegative), mask&isNegative);
-    }
-
+    }*/
     
     template <typename RetNumber> inline RetNumber applyHalf(const RetNumber &number) const {
         return value.applyHalf(number, ~isNegative);

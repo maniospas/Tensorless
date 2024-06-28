@@ -141,20 +141,24 @@ public:
     Int4 half() const {
         return Int4(value1, value2, value3, 0);
     }
-
-    template <typename RetNumber> RetNumber applyHalf(const RetNumber &number) const {
-        return number.half(value3).half(value3).half(value3).half(value2).half(value2).half(value1);
+    
+    inline static Int4 broadcastOnes(const VECTOR &mask) {
+        return Int4(mask, 0, 0, 0);
     }
 
-    template <typename RetNumber> RetNumber applyHalf(const RetNumber &number, const VECTOR &mask) const {
-        return number.half(value3&mask).half(value3&mask).half(value3&mask).half(value2&mask).half(value2&mask).half(value1&mask);
+    template <typename RetNumber> inline __attribute__((always_inline)) RetNumber applyHalf(const RetNumber &number) const {
+        return number.half(value3).eighth(value3).eighth(value2).quarter(value1).half(value);
+    }
+
+    template <typename RetNumber> inline __attribute__((always_inline)) RetNumber applyHalf(const RetNumber &number, const VECTOR &mask) const {
+        return number.half(value3&mask).eighth(value3&mask).eighth(value2&mask).quarter(value1&mask).half(value&mask);
     }
     
-    template <typename RetNumber> RetNumber applyTimes2(const RetNumber &number) const {
+    template <typename RetNumber> inline __attribute__((always_inline)) RetNumber applyTimes2(const RetNumber &number) const {
         return number.times2(value3).times2(value3).times2(value3).times2(value2).times2(value2).times2(value1);
     }
 
-    template <typename RetNumber> RetNumber applyTimes2(const RetNumber &number, const VECTOR &mask) const {
+    template <typename RetNumber> inline __attribute__((always_inline)) RetNumber applyTimes2(const RetNumber &number, const VECTOR &mask) const {
         return number.times2(value3&mask).times2(value3&mask).times2(value3&mask).times2(value2&mask).times2(value2&mask).times2(value1&mask);
     }
 
@@ -214,33 +218,33 @@ public:
         return *this;
     }
 
-    int countNonZeros() { 
+    inline __attribute__((always_inline)) int countNonZeros() { 
         VECTOR n = value | value1 | value2;
         return bitcount(n);
     }
     
-    Int4 operator~() const {
+    inline __attribute__((always_inline)) Int4 operator~() const {
         return Int4(~(value | value1 | value2 | value3), 0, 0, 0);
     }
     
-    Int4 operator!=(const Int4 &other) const {
+    inline __attribute__((always_inline)) Int4 operator!=(const Int4 &other) const {
         return Int4((other.value^value) | (other.value1^value1) | (other.value2^value2) | (other.value3^value3), 0, 0, 0);
     }
  
-    Int4 twosComplement(const VECTOR &mask) const {
+    inline __attribute__((always_inline)) Int4 twosComplement(const VECTOR &mask) const {
         VECTOR notmask = ~mask;
         return Int4(mask&~value | (notmask&value), 
                       mask&~value1 | (notmask&value1),
                       mask&~value2 | (notmask&value2),
                       mask&~value3 | (notmask&value3)
-        ).addWithoutCarry(Int4(mask,0,0,0));
+        ).selfAdd(mask);
     }
     
-    Int4 twosComplement() const {
+    inline __attribute__((always_inline)) Int4 twosComplement() const {
         return Int4(~value, ~value1, ~value2, ~value3).addWithoutCarry(Int4(~(VECTOR)0,0,0,0));
     }
 
-    Int4 twosComplementWithCarry(const VECTOR &mask, VECTOR &carry) const {
+    inline __attribute__((always_inline)) Int4 twosComplementWithCarry(const VECTOR &mask, VECTOR &carry) const {
         VECTOR notmask = ~mask;
         return Int4(mask&~value | (notmask&value), 
                       mask&~value1 | (notmask&value1),
@@ -249,11 +253,11 @@ public:
         ).addWithCarry(Int4(mask,0,0, 0), carry);
     }
     
-    Int4 twosComplementWithCarry(VECTOR &carry) const {
+    inline __attribute__((always_inline)) Int4 twosComplementWithCarry(VECTOR &carry) const {
         return Int4(~value, ~value1, ~value2, ~value3).addWithCarry(Int4(~(VECTOR)0,0,0,0), carry);
     }
 
-    Int4 addWithoutCarry(const Int4 &other) const {
+    inline __attribute__((always_inline)) Int4 addWithoutCarry(const Int4 &other) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -264,7 +268,7 @@ public:
                     );
     }
 
-    Int4 addWithCarry(const Int4 &other, VECTOR &lastcarry) const {
+    inline __attribute__((always_inline)) Int4 addWithCarry(const Int4 &other, VECTOR &lastcarry) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -276,7 +280,7 @@ public:
                     );
     }
 
-    Int4 operator+(const Int4 &other) const {
+    inline __attribute__((always_inline)) Int4 operator+(const Int4 &other) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -287,7 +291,7 @@ public:
                     );
     }
 
-    const Int4& operator+=(const Int4 &other) {
+    inline __attribute__((always_inline)) const Int4& operator+=(const Int4 &other) {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -298,19 +302,72 @@ public:
         return *this;
     }
 
-    static int sup() {
+    inline __attribute__((always_inline)) const Int4& selfAdd(const VECTOR &other, const VECTOR &other1, const VECTOR &other2, const VECTOR &other3) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = (value1 & other1) | (carry & (value1 ^ other1));
+        VECTOR carry2 = (value2 & other2) | (carry1 & (value2 ^ other2));
+        value = other^value;
+        value1 = other1^value1^carry;
+        value2 = other2^value2^carry1;
+        value3 = other3^value3^carry2;
+        return *this;
+    }
+
+    inline __attribute__((always_inline)) const Int4& selfAdd(const VECTOR &other, const VECTOR &other1, const VECTOR &other2) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = (value1 & other1) | (carry & (value1 ^ other1));
+        VECTOR carry2 = (value2 & other2) | (carry1 & (value2 ^ other2));
+        value = other^value;
+        value1 = other1^value1^carry;
+        value2 = other2^value2^carry1;
+        value3 = value3^carry2;
+        return *this;
+    }
+
+    inline __attribute__((always_inline)) const Int4& selfAdd(const VECTOR &other, const VECTOR &other1) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = (value1 & other1) | (carry & (value1 ^ other1));
+        VECTOR carry2 = carry1 & value2;
+        value = other^value;
+        value1 = other1^value1^carry;
+        value2 = value2^carry1;
+        value3 = value3^carry2;
+        return *this;
+    }
+
+    inline __attribute__((always_inline)) const Int4& selfAdd(const VECTOR &other) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = carry & value1;
+        VECTOR carry2 = carry1 & value2;
+        value = other^value;
+        value1 = value1^carry;
+        value2 = value2^carry1;
+        value3 = value3^carry2;
+        return *this;
+    }
+
+    inline __attribute__((always_inline)) static int sup() {
         return 15;
     }
 
-    static int eps() {
+    inline __attribute__((always_inline)) static int eps() {
         return 1;
     }
 
-    static int inf() {
+    inline __attribute__((always_inline)) static int inf() {
         return 0;
     }
+    
+    inline __attribute__((always_inline)) Int4 merge(const Int4 &other, const VECTOR &mask) const {
+        VECTOR notmask = ~mask;
+        return Int4((value&mask) | (other.value & notmask), 
+                    (value1&mask) | (other.value1 & notmask),
+                    (value2&mask) | (other.value2 & notmask),
+                    (value3&mask) | (other.value3 & notmask)
+                    );
+    }
 
-    const int absmax() const {
+    inline __attribute__((always_inline)) const int absmax() const {
         int ret = 0;
         VECTOR v2 = value2;
         VECTOR v1 = value1;

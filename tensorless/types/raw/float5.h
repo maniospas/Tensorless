@@ -122,8 +122,46 @@ public:
         return Float5(0, value, value1, value2, value3);
     }
 
-    Float5 half() {
+    Float5 half() const {
         return Float5(value1, value2, value3, value4, 0);
+    }
+
+    inline __attribute__((always_inline)) Float5 half(const VECTOR &mask) const {
+        VECTOR notmask = ~mask;
+        return Float5(
+                      (mask & value1) | (value & notmask), 
+                      (mask & value2) | (value1 & notmask), 
+                      (mask & value3) | (value2 & notmask), 
+                      (mask & value4) | (value3 & notmask), 
+                                         value4 & notmask);
+    }
+    
+    Float5 quarter() const {
+        return Float5(value2, value3, value4, 0, 0);
+    }
+
+    inline __attribute__((always_inline)) Float5 quarter(const VECTOR &mask) const {
+        VECTOR notmask = ~mask;
+        return Float5(
+                      (mask & value2) | (value & notmask), 
+                      (mask & value3) | (value1 & notmask), 
+                      (mask & value4) | (value2 & notmask), 
+                                         value3 & notmask, 
+                                         value4 & notmask);
+    }
+    
+    Float5 eighth() const {
+        return Float5(value3, value4, 0, 0, 0);
+    }
+
+    inline __attribute__((always_inline)) Float5 eighth(const VECTOR &mask) const {
+        VECTOR notmask = ~mask;
+        return Float5(
+                      (mask & value3) | (value & notmask), 
+                      (mask & value4) | (value1 & notmask), 
+                                         value2 & notmask, 
+                                         value3 & notmask, 
+                                         value4 & notmask);
     }
 
     const bool isZeroAt(int i) {
@@ -161,7 +199,7 @@ public:
         return ret/16.0;
     }
 
-    const double sum() const {
+    inline __attribute__((always_inline)) const double sum() const {
         int ret = bitcount(value);
         ret += bitcount(value1)*2;
         ret += bitcount(value2)*4;
@@ -170,7 +208,7 @@ public:
         return ret/16.0;
     }
 
-    const double sum(const VECTOR &mask) const {
+    inline __attribute__((always_inline)) const double sum(const VECTOR &mask) const {
         int ret = bitcount(value&mask);
         ret += bitcount(value1&mask)*2;
         ret += bitcount(value2&mask)*4;
@@ -253,20 +291,20 @@ public:
         return *this;
     }
 
-    int countNonZeros() { 
+    inline __attribute__((always_inline)) int countNonZeros() { 
         VECTOR n = value | value1 | value2 | value3 | value4;
         return bitcount(n);
     }
 
-    Float5 operator~() const {
+    inline __attribute__((always_inline)) Float5 operator~() const {
         return Float5(0, 0, 0, 0, ~(value | value1 | value2 | value3 | value4));
     }
 
-    Float5 operator!=(const Float5 &other) const {
+    inline __attribute__((always_inline)) Float5 operator!=(const Float5 &other) const {
         return Float5(0, 0, 0, 0, (other.value^value) | (other.value1^value1) | (other.value2^value2) | (other.value3^value3) | (other.value4^value4));
     }
 
-    Float5 operator*(const Float5 &other) const {
+    inline __attribute__((always_inline)) Float5 operator*(const Float5 &other) const {
         Float5 ret = Float5();
         ret += Float5(value4&other.value, value4&other.value1, value4&other.value2, value4&other.value3, value4&other.value4);
         ret += Float5(value3&other.value1, value3&other.value2, value3&other.value3, value3&other.value4, 0);
@@ -276,7 +314,7 @@ public:
         return ret;
     }
 
-    Float5 addWithoutCarry(const Float5 &other) const {
+    inline __attribute__((always_inline)) Float5 addWithoutCarry(const Float5 &other) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -289,7 +327,7 @@ public:
                     );
     }
 
-    Float5 addWithCarry(const Float5 &other, VECTOR &lastcarry) const {
+    inline __attribute__((always_inline)) Float5 addWithCarry(const Float5 &other, VECTOR &lastcarry) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -303,7 +341,7 @@ public:
                     );
     }
 
-    Float5 twosComplement(const VECTOR &mask) const {
+    inline __attribute__((always_inline)) Float5 twosComplement(const VECTOR &mask) const {
         VECTOR notmask = ~mask;
         return Float5((mask&~value) | (notmask&value), 
                       (mask&~value1) | (notmask&value1),
@@ -313,11 +351,11 @@ public:
         ).addWithoutCarry(Float5(mask,0,0,0,0));
     }
 
-    Float5 twosComplement() const {
+    inline __attribute__((always_inline)) Float5 twosComplement() const {
         return Float5(~value, ~value1, ~value2, ~value3, ~value4).addWithoutCarry(Float5(~(VECTOR)0,0,0,0,0));
     }
 
-    Float5 twosComplementWithCarry(const VECTOR &mask, VECTOR &carry) const {
+    inline __attribute__((always_inline)) Float5 twosComplementWithCarry(const VECTOR &mask, VECTOR &carry) const {
         VECTOR notmask = ~mask;
         return Float5((mask&~value) | (notmask&value), 
                       (mask&~value1) | (notmask&value1),
@@ -327,11 +365,11 @@ public:
         ).addWithCarry(Float5(mask,0,0,0,0), carry);
     }
 
-    Float5 twosComplementWithCarry(VECTOR &carry) const {
+    inline __attribute__((always_inline)) Float5 twosComplementWithCarry(VECTOR &carry) const {
         return Float5(~value, ~value1, ~value2, ~value3, ~value4).addWithCarry(Float5(~(VECTOR)0,0,0,0,0), carry);
     }
 
-    Float5 operator+(const Float5 &other) const {
+    inline __attribute__((always_inline)) Float5 operator+(const Float5 &other) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -350,11 +388,16 @@ public:
                     other.value4^value4^carry3
                     );
     }
-    const Float5& operator+=(const Float5 &other) {
+    inline __attribute__((always_inline)) const Float5& operator+=(const Float5 &other) {
+        value = other.value^value;
         VECTOR carry = other.value&value;
+        value1 = other.value1^value1^carry;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
+        value2 = other.value2^value2^carry1;
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
+        value3 = other.value3^value3^carry2;
         VECTOR carry3 = (value3 & other.value3) | (carry2 & (value3 ^ other.value3));
+        value4 = other.value4^value4^carry3;
         
         #ifdef DEBUG_OVERFLOWS
         VECTOR lastcarry = (value4 & other.value4) | (carry3 & (value4 ^ other.value4));
@@ -362,14 +405,9 @@ public:
             throw std::logic_error("arithmetic overflow");
         #endif
 
-        value = other.value^value;
-        value1 = other.value1^value1^carry;
-        value2 = other.value2^value2^carry1;
-        value3 = other.value3^value3^carry2;
-        value4 = other.value4^value4^carry3;
         return *this;
     }
-    const Float5& operator*=(const Float5 &other) {
+    inline __attribute__((always_inline)) const Float5& operator*=(const Float5 &other) {
         Float5 ret = Float5();
         ret += Float5(value4&other.value, value4&other.value1, value4&other.value2, value4&other.value3, value4&other.value4);
         ret += Float5(value3&other.value1, value3&other.value2, value3&other.value3, value3&other.value4, 0);

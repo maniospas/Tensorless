@@ -4,11 +4,11 @@
 #include <chrono>
 
 using namespace tensorless;
-#define TYPE float8
+#define TYPE dfloat8
 
 int main() {
     auto in = TYPE::random();
-    auto optimizer = SGD<TYPE>(0.01);
+    auto optimizer = SGD<TYPE>(0.1);
     auto arch = Layered<TYPE>()
                 .add(std::make_shared<Dense<TYPE, 128, 128>>());
     std::cout << arch << "\n";
@@ -20,11 +20,13 @@ int main() {
 
 
     auto start = std::chrono::high_resolution_clock::now();
-    for(int epoch=0;epoch<3000;++epoch) {
+    for(int epoch=0;epoch<50;++epoch) {
+        arch.zerograd();
         auto out = arch.forward(in);
-        //double error = ((out-in)*(out-in)).sum();
-        //arch.backward(in-out, optimizer);
+        auto error = (out-in);
+        arch.backward(out-in, optimizer);
         //std::cout << "Epoch "<<epoch+1<<" squaresum "<<error<<"\n";
+        std::cout << "Epoch "<<epoch+1<<" "<<error<<"\n";
     }
     
     auto end = std::chrono::high_resolution_clock::now();

@@ -55,7 +55,7 @@ public:
         Tensor in = input; 
         Tensor out = Tensor();
         double scale = 2*std::sqrt(12.0/outs);
-        #pragma omp parallel for
+        //#pragma omp parallel for
         for (int i=0;i<outs;++i) {
             Tensor weightedIns = input*weights[i]; 
             double sum = weightedIns.sum()*scale+biases[i];
@@ -81,7 +81,7 @@ public:
                 continue;
             Tensor erri = weights[i]*error*scale;
             optimizer.update(weights[i], error, invscale);
-            optimizer.update(biases[i], errorsum, invscale);
+            //optimizer.update(biases[i], errorsum, invscale);
             #pragma omp critical
             {
                 err = err + erri;

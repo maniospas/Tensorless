@@ -10,9 +10,11 @@
                 "${file}",
                 "-fopenmp",
                 "-O2",
-                "-finline-limit=400",
+                "-finline-limit=1000",
                 "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe"
+                "${fileDirname}\\${fileBasenameNoExtension}.exe",
+                //"-march=native",
+                //"-mtune=native"
             ],
             "options": {
                 "cwd": "${fileDirname}"

@@ -24,28 +24,42 @@ limitations under the License.
 #include "raw/float3.h"
 #include "raw/float4.h"
 #include "raw/float5.h"
+#include "raw/float6.h"
+#include "raw/float7.h"
 #include "raw/float8.h"
 #include "signed.h"
 #include "dynamic.h"
 #include "floating.h"
 
 namespace tensorless {
-    typedef Signed<Int2> int2;
-    typedef Signed<Int3> int3;
-    typedef Signed<Int4> int4;
+    typedef Signed<Int2> int3;
+    typedef Signed<Int3> int4;
+    typedef Signed<Int4> int5;
     
-    typedef Signed<Float3> SFloat3;
-    typedef Signed<Float4> SFloat4;
-    typedef Signed<Float5> SFloat5;
-    typedef Signed<Float8> SFloat8;
+    typedef Signed<Float3> sfloat4;
+    typedef Signed<Float4> sfloat5;
+    typedef Signed<Float5> sfloat6;
+    typedef Signed<Float6> sfloat7;
+    typedef Signed<Float7> sfloat8;
+    typedef Signed<Float8> sfloat9;
 
-    typedef Dynamic<SFloat3> dfloat3;
-    typedef Dynamic<SFloat4> dfloat4;
-    typedef Dynamic<SFloat5> dfloat5;
-    typedef Dynamic<SFloat8> dfloat8;
+    typedef Dynamic<sfloat4> dfloat5;
+    typedef Dynamic<sfloat5> dfloat6;
+    typedef Dynamic<sfloat6> dfloat7;
+    typedef Dynamic<sfloat7> dfloat8;
+    typedef Dynamic<sfloat8> dfloat9;
+    typedef Dynamic<sfloat9> dfloat10;
     
-    typedef Floating<SFloat5, int3> float10; 
-    typedef Floating<SFloat8, int4> float14; 
+    typedef Floating<sfloat5, int3> float8; 
+    typedef Floating<sfloat5, int4> float9; 
+    typedef Floating<sfloat6, int4> float10;
+    typedef Floating<sfloat7, int4> float11; 
+    typedef Floating<sfloat8, int4> float12; 
+
+    // experimental but slower datatypes
+    typedef Floating<sfloat8, int5> float13;  
+    typedef Floating<sfloat9, int5> float14;  
+    typedef Floating<sfloat9, int5> float15; 
 }
 
 #endif  // TENSORLESS_TYPES_H
