@@ -279,7 +279,9 @@ public:
     }
 
     inline Signed<Number> operator*(const Signed<Number> &other) const {
-        Number ret = value.twosComplement(isNegative)*other.value.twosComplement(other.isNegative);
+        Number ret1 = value.twosComplement(isNegative);
+        Number ret2 = other.value.twosComplement(other.isNegative);
+        Number ret = ret1*ret2;
         VECTOR neg = isNegative ^ other.isNegative;
         return Signed<Number>(ret.twosComplement(neg), neg);
     }

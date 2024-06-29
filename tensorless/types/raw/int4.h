@@ -163,10 +163,12 @@ public:
     }
 
     const Int4& set(int i, int val) {
+        #ifdef DEBUG_SET
         if(size()<=i || i<0)
             throw std::logic_error("out of of range");
         if(val<0 || val>15)
             throw std::logic_error("can only set values in range [0,15], given "+std::to_string(val));
+        #endif
         if(val>=8) {
             // #pragma omp atomic
             value3 |= ONEHOT(i);

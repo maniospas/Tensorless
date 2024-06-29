@@ -306,10 +306,13 @@ public:
     }
 
     inline __attribute__((always_inline)) const Float8& set(int i, double val) {
+        #ifdef DEBUG_SET
         if(size()<=i || i<0)
             throw std::logic_error("out of of range");
         if(val<0 || val>2)
             throw std::logic_error("can only set values in range [0,2]");
+        #endif
+        
         if(val>=1) {
             // #pragma omp atomic
             value7 |= ONEHOT(i);
@@ -412,8 +415,7 @@ public:
     }
 
     inline __attribute__((always_inline)) Float8 operator*(const Float8 &other) const {
-        Float8 ret = Float8();
-        ret += Float8(value7&other.value, value7&other.value1, value7&other.value2, value7&other.value3, value7&other.value4, value7&other.value5, value7&other.value6, value7&other.value7);
+        Float8 ret = Float8(value7&other.value, value7&other.value1, value7&other.value2, value7&other.value3, value7&other.value4, value7&other.value5, value7&other.value6, value7&other.value7);
         ret += Float8(value6&other.value1, value6&other.value2, value6&other.value3, value6&other.value4, value6&other.value5, value6&other.value6, value6&other.value7, 0);
         ret += Float8(value5&other.value2, value5&other.value3, value5&other.value4, value5&other.value5, value5&other.value6, value5&other.value7, 0, 0);
         ret += Float8(value4&other.value3, value4&other.value4, value4&other.value5, value4&other.value6, value4&other.value7, 0, 0, 0);
@@ -552,8 +554,7 @@ public:
     }
     
     inline __attribute__((always_inline)) const Float8& operator*=(const Float8 &other) {
-        Float8 ret = Float8();
-        ret += Float8(value7&other.value, value7&other.value1, value7&other.value2, value7&other.value3, value7&other.value4, value7&other.value5, value7&other.value6, value7&other.value7);
+        Float8 ret = Float8(value7&other.value, value7&other.value1, value7&other.value2, value7&other.value3, value7&other.value4, value7&other.value5, value7&other.value6, value7&other.value7);
         ret += Float8(value6&other.value1, value6&other.value2, value6&other.value3, value6&other.value4, value6&other.value5, value6&other.value6, value6&other.value7, 0);
         ret += Float8(value5&other.value2, value5&other.value3, value5&other.value4, value5&other.value5, value5&other.value6, value5&other.value7, 0, 0);
         ret += Float8(value4&other.value3, value4&other.value4, value4&other.value5, value4&other.value6, value4&other.value7, 0, 0, 0);

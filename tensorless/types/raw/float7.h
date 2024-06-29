@@ -287,10 +287,12 @@ public:
     }
 
     inline __attribute__((always_inline)) const Float7& set(int i, double val) {
+        #ifdef DEBUG_SET
         if(size()<=i || i<0)
             throw std::logic_error("out of of range");
         if(val<0 || val>1)
             throw std::logic_error("can only set values in range [0,1]");
+        #endif
         if(val>=0.5) {
             // #pragma omp atomic
             value6 |= ONEHOT(i);

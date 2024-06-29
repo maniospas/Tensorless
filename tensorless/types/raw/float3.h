@@ -84,7 +84,7 @@ public:
         return ANY(value) || ANY(value1) || ANY(value2);
     }
 
-    Float3 times2() {
+    inline __attribute__((always_inline)) Float3 times2() {
         #ifdef DEBUG_OVERFLOWS
         if(ANY(value2))
             throw std::logic_error("arithmetic overflow");
@@ -92,8 +92,30 @@ public:
         return Float3(0, value, value1);
     }
 
-    Float3 half() {
+    inline __attribute__((always_inline)) Float3 half() {
         return Float3(value1, value2, 0);
+    }
+    
+    inline __attribute__((always_inline)) Float3 half(const VECTOR &mask) const {
+        VECTOR notmask = ~mask;
+        return Float3(
+                      (mask & value1) | (value & notmask), 
+                      (mask & value2) | (value1 & notmask), 
+                                         value2 & notmask);
+    }
+
+    inline __attribute__((always_inline)) Float3 quarter(const VECTOR &mask) const {
+        VECTOR notmask = ~mask;
+        return Float3(
+                      (mask & value2) | (value & notmask), 
+                                         value1 & notmask, 
+                                         value2 & notmask);
+    }
+
+    inline __attribute__((always_inline)) Float3 eighth(const VECTOR &mask) const {
+        // float3/8 = 0
+        VECTOR notmask = ~mask;
+        return Float3(value & notmask, value1 & notmask, value2 & notmask);
     }
 
     friend std::ostream& operator<<(std::ostream &os, const Float3 &si) {
@@ -159,10 +181,12 @@ public:
     }
     
     const Float3& set(int i, double val) {
+        #ifdef DEBUG_SET
         if(size()<=i || i<0)
             throw std::logic_error("out of of range");
         if(val<0 || val>2)
             throw std::logic_error("can only set values in range [0,2]");
+        #endif
         if(val>=1) {
             value2 |= ONEHOT(i);
             val -= 1;
@@ -195,24 +219,72 @@ public:
         return *this;
     }
 
-    int countNonZeros() { 
+    inline __attribute__((always_inline)) int countNonZeros() { 
         VECTOR n = value | value1 | value2;
         return bitcount(n);
     }
 
-    Float3 twosComplement(const VECTOR &mask) const {
+    inline __attribute__((always_inline)) Float3 twosComplement(const VECTOR &mask) const {
         VECTOR notmask = ~mask;
         return Float3(mask&~value | (notmask&value), 
                       mask&~value1 | (notmask&value1),
                       mask&~value2 | (notmask&value2)
-        ).addWithoutCarry(Float3(mask,0,0));
+        ).selfAdd(mask);
+    }
+
+    inline __attribute__((always_inline)) const Float3& selfAdd(const VECTOR &other, const VECTOR &other1, const VECTOR &other2) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = (value1 & other1) | (carry & (value1 ^ other1));
+        
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = (value2 & other2) | (carry1 & (value2 ^ other2));
+        if(ANY(lastcarry))
+            throw std::logic_error("arithmetic overflow");
+        #endif
+
+        value = other^value;
+        value1 = other1^value1^carry;
+        value2 = other2^value2^carry1;
+        return *this;
     }
     
-    Float3 twosComplement() const {
+    inline __attribute__((always_inline)) const Float3& selfAdd(const VECTOR &other, const VECTOR &other1) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = (value1 & other1) | (carry & (value1 ^ other1));
+        
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = carry1 & value2;
+        if(ANY(lastcarry))
+            throw std::logic_error("arithmetic overflow");
+        #endif
+
+        value = other^value;
+        value1 = other1^value1^carry;
+        value2 = value2^carry1;
+        return *this;
+    }
+    
+    inline __attribute__((always_inline)) const Float3& selfAdd(const VECTOR &other) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = carry & value1;
+        
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = carry1 & value2;
+        if(ANY(lastcarry))
+            throw std::logic_error("arithmetic overflow");
+        #endif
+
+        value = other^value;
+        value1 = value1^carry;
+        value2 = value2^carry1;
+        return *this;
+    }
+    
+    inline __attribute__((always_inline)) Float3 twosComplement() const {
         return Float3(~value, ~value1, ~value2).addWithoutCarry(Float3(~(VECTOR)0,0,0));
     }
 
-    Float3 twosComplementWithCarry(const VECTOR &mask, VECTOR &carry) const {
+    inline __attribute__((always_inline)) Float3 twosComplementWithCarry(const VECTOR &mask, VECTOR &carry) const {
         VECTOR notmask = ~mask;
         return Float3(mask&~value | (notmask&value), 
                       mask&~value1 | (notmask&value1),
@@ -220,27 +292,26 @@ public:
         ).addWithCarry(Float3(mask,0,0), carry);
     }
     
-    Float3 twosComplement(VECTOR &carry) const {
+    inline __attribute__((always_inline)) Float3 twosComplementWithCarry(VECTOR &carry) const {
         return Float3(~value, ~value1, ~value2).addWithCarry(Float3(~(VECTOR)0,0,0), carry);
     }
     
-    Float3 operator~() const {
+    inline __attribute__((always_inline)) Float3 operator~() const {
         return Float3(0, 0, ~(value | value1 | value2));
     }
 
-    Float3 operator!=(const Float3 &other) const {
+    inline __attribute__((always_inline)) Float3 operator!=(const Float3 &other) const {
         return Float3(0, 0, (other.value^value) | (other.value1^value1) | (other.value2^value2));
     }
 
-    Float3 operator*(const Float3 &other) const {
-        Float3 ret = Float3();
-        ret += Float3(value2&other.value, value2&other.value1, value2&other.value2);
-        ret += Float3(value1&other.value1, value1&other.value2, 0);
-        ret += Float3(value&other.value2, 0, 0);
+    inline __attribute__((always_inline)) Float3 operator*(const Float3 &other) const {
+        Float3 ret = Float3(value2&other.value, value2&other.value1, value2&other.value2);
+        ret.selfAdd(value1&other.value1, value1&other.value2);
+        ret.selfAdd(value&other.value2);
         return ret;
     }
 
-    Float3 addWithoutCarry(const Float3 &other) const {
+    inline __attribute__((always_inline)) Float3 addWithoutCarry(const Float3 &other) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         return Float3(other.value^value, 
@@ -249,7 +320,7 @@ public:
                     );
     }
 
-    Float3 addWithCarry(const Float3 &other, VECTOR &lastcarry) const {
+    inline __attribute__((always_inline)) Float3 addWithCarry(const Float3 &other, VECTOR &lastcarry) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         lastcarry = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -259,7 +330,7 @@ public:
                     );
     }
 
-    Float3 operator+(const Float3 &other) const {
+    inline __attribute__((always_inline)) Float3 operator+(const Float3 &other) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         
@@ -275,7 +346,7 @@ public:
                     );
     }
 
-    const Float3& operator+=(const Float3 &other) {
+    inline __attribute__((always_inline)) const Float3& operator+=(const Float3 &other) {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         
@@ -291,11 +362,10 @@ public:
         return *this;
     }
 
-    const Float3& operator*=(const Float3 &other) {
-        Float3 ret = Float3();
-        ret += Float3(value2&other.value, value2&other.value1, value2&other.value2);
-        ret += Float3(value1&other.value1, value1&other.value2, 0);
-        ret += Float3(value&other.value2, 0, 0);
+    inline __attribute__((always_inline)) const Float3& operator*=(const Float3 &other) {
+        Float3 ret = Float3(value2&other.value, value2&other.value1, value2&other.value2);
+        ret.selfAdd(value1&other.value1, value1&other.value2);
+        ret.selfAdd(value&other.value2);
         value = ret.value;
         value1 = ret.value1;
         value2 = ret.value2;
@@ -314,11 +384,11 @@ public:
         return 0;
     }
 
-    Float3 zerolike() const {
+    inline __attribute__((always_inline)) Float3 zerolike() const {
         return Float3();
     }
 
-    Float3 zerolike(const VECTOR& mask) const {
+    inline __attribute__((always_inline)) Float3 zerolike(const VECTOR& mask) const {
         VECTOR notmask = ~mask;
         return Float3(value&notmask, value1&notmask, value2&notmask);
     }

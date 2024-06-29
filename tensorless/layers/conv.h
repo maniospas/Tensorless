@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 
-#ifndef TENSORLESS_DENSE_H
-#define TENSORLESS_DENSE_H
+#ifndef TENSORLESS_CONV_H
+#define TENSORLESS_CONV_H
 
 #include <iostream>
 #include <vector>
@@ -27,14 +27,14 @@ limitations under the License.
 namespace tensorless {
 
 template <typename Tensor, int ins, int outs>
-class Dense: public Neural<Tensor> {
+class Conv: public Neural<Tensor> {
 private:
     Tensor weights[outs];
     double biases[outs];
     bool activations[outs];
 
 public:
-    Dense() {
+    Conv() {
         for (int i=0; i<outs;++i) 
             weights[i] = Tensor::random();
     }
@@ -46,7 +46,7 @@ public:
         description += "\n  Inputs   " + std::to_string(ins);
         description += "\n  Outputs  " + std::to_string(outs);
         description += "\n  Params   " + std::to_string(Tensor::num_params()*outs+outs)
-                            +" ("+std::to_string(paramSpace)+" bytes, "+std::to_string(paramSpace/sizeof(float)*100/ins/outs)+"% of float)";
+                            +" ("+std::to_string(paramSpace)+" bytes, "+std::to_string(paramSpace/sizeof(float)*100/ins/outs)+"% of float32)";
         description += "\n";
         return description;
     }
@@ -54,16 +54,14 @@ public:
     virtual Tensor forward(const Tensor& input) {
         Tensor in = input; 
         Tensor out = Tensor();
-        bool activation;
-        double sum;
-        Tensor weightedIns;
-        //#pragma omp parallel for shared(input, weights, out) private(weightedIns, sum, activation)
+        double scale = 2*std::sqrt(12.0/outs);
+        //#pragma omp parallel for
         for (int i=0;i<outs;++i) {
-            weightedIns = input*weights[i]; 
-            sum = weightedIns.sum();
-            activation = sum>0;
-            if(activation) { // relu
-                //#pragma omp critical 
+            Tensor weightedIns = input*weights[i]; 
+            double sum = weightedIns.sum()*scale+biases[i];
+            activations[i] = sum>0;
+            if(activations[i]) { // relu
+                #pragma omp critical 
                 {
                     out.set(i, sum);
                 }
@@ -73,23 +71,6 @@ public:
     }
 
     virtual Tensor backward(const Tensor &error, Optimizer<Tensor> &optimizer) {
-        /*Tensor err;
-        double scale = 2*std::sqrt(12.0/outs);
-        double invscale = 1./scale;
-        double errorsum = error.sum();
-        //#pragma omp parallel for
-        for (int i=0;i<outs;++i) {
-            if(!activations[i])
-                continue;
-            Tensor erri = weights[i]*error*scale;
-            optimizer.update(weights[i], error, invscale);
-            //optimizer.update(biases[i], errorsum, invscale);
-            #pragma omp critical
-            {
-                err = err + erri;
-            }
-        }
-        return err;*/
         return error;
     }
 
@@ -98,4 +79,4 @@ public:
 };
 
 }
-#endif  // TENSORLESS_DENSE_H
+#endif  // TENSORLESS_CONV_H

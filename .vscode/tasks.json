@@ -14,6 +14,7 @@
                 "-o",
                 "${fileDirname}\\${fileBasenameNoExtension}.exe",
                 "-fearly-inlining",
+                "-msse4.2",
                 //"-march=native",
                 //"-mtune=native"
             ],

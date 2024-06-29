@@ -50,7 +50,8 @@ namespace tensorless {
     typedef Dynamic<sfloat8> dfloat9;
     typedef Dynamic<sfloat9> dfloat10;
     
-    typedef Floating<sfloat5, int3> float8; 
+    typedef Floating<sfloat4, int3> float7; 
+    typedef Floating<sfloat4, int4> float8; 
     typedef Floating<sfloat5, int4> float9; 
     typedef Floating<sfloat6, int4> float10;
     typedef Floating<sfloat7, int4> float11; 

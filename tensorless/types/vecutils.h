@@ -19,6 +19,9 @@ limitations under the License.
 
 //#define DEBUG_OVERFLOWS  // enable for a slow but logically safe execution environment
 //#define SUPERLONG
+#ifdef __SIZEOF_INT128__
+    #define INT128
+#endif
 
 #include <iostream>
 #include <vector>
@@ -33,7 +36,7 @@ std::mt19937_64 generator(rd());
 std::uniform_int_distribution<long long> distribution(0, LONG_LONG_MAX);
 
 #ifdef SUPERLONG
-    #ifdef __SIZEOF_INT128__
+    #ifdef INT128
         #define INTERNALVECTOR __int128 
     #else
         #define INTERNALVECTOR long long
@@ -140,7 +143,7 @@ std::uniform_int_distribution<long long> distribution(0, LONG_LONG_MAX);
     }
     #define ONEHOT(i) (FourLongs().toggleOn(i))
 #else
-#ifdef __SIZEOF_INT128__
+#ifdef INT128
     #define VECTOR __int128 
     #define GETAT(x, i) ((int)((x >> i) & 1))
     #define bitcount(x) (__builtin_popcountll(static_cast<uint64_t>(x))+__builtin_popcountll(static_cast<uint64_t>((x) >> 64)))

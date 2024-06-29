@@ -82,7 +82,7 @@ public:
     
     Float5() : value(0), value1(0), value2(0), value3(0), value4(0) {}
 
-    Float5& operator=(const Float5 &other) {
+    inline __attribute__((always_inline)) Float5& operator=(const Float5 &other) {
         if (this != &other) {
             value = other.value;
             value1 = other.value1;
@@ -114,7 +114,7 @@ public:
         return VECTOR_SIZE;
     }
 
-    Float5 times2() {
+    inline __attribute__((always_inline)) Float5 times2() {
         #ifdef DEBUG_OVERFLOWS
         if(ANY(value4))
             throw std::logic_error("arithmetic overflow");
@@ -122,7 +122,7 @@ public:
         return Float5(0, value, value1, value2, value3);
     }
 
-    Float5 half() const {
+    inline __attribute__((always_inline)) Float5 half() const {
         return Float5(value1, value2, value3, value4, 0);
     }
 
@@ -136,7 +136,7 @@ public:
                                          value4 & notmask);
     }
     
-    Float5 quarter() const {
+    inline __attribute__((always_inline)) Float5 quarter() const {
         return Float5(value2, value3, value4, 0, 0);
     }
 
@@ -150,7 +150,7 @@ public:
                                          value4 & notmask);
     }
     
-    Float5 eighth() const {
+    inline __attribute__((always_inline)) Float5 eighth() const {
         return Float5(value3, value4, 0, 0, 0);
     }
 
@@ -164,12 +164,12 @@ public:
                                          value4 & notmask);
     }
 
-    const bool isZeroAt(int i) {
+    inline __attribute__((always_inline)) const bool isZeroAt(int i) {
         VECTOR a = value | value1 | value2 | value3 | value4;
         return GETAT(a, i);
     }
 
-    const double absmax() const {
+    inline __attribute__((always_inline)) const double absmax() const {
         int ret = 0;
         VECTOR mask = 0;
         if(ANY(value4)) {
@@ -217,7 +217,7 @@ public:
         return ret/16.0;
     }
     
-    const double get(int i) const {
+    inline __attribute__((always_inline)) const double get(int i) const {
         int ret = GETAT(value, i);
         ret += GETAT(value1, i)*2;
         ret += GETAT(value2, i)*4;
@@ -226,11 +226,14 @@ public:
         return ret/16.0;
     }
 
-    const Float5& set(int i, double val) {
+    inline __attribute__((always_inline)) const Float5& set(int i, double val) {
+        #ifdef DEBUG_SET
         if(size()<=i || i<0)
             throw std::logic_error("out of of range");
         if(val<0 || val>2)
             throw std::logic_error("can only set values in range [0,2]");
+        #endif
+        
         if(val>=1) {
             // #pragma omp atomic
             value4 |= ONEHOT(i);
@@ -305,13 +308,117 @@ public:
     }
 
     inline __attribute__((always_inline)) Float5 operator*(const Float5 &other) const {
-        Float5 ret = Float5();
-        ret += Float5(value4&other.value, value4&other.value1, value4&other.value2, value4&other.value3, value4&other.value4);
-        ret += Float5(value3&other.value1, value3&other.value2, value3&other.value3, value3&other.value4, 0);
-        ret += Float5(value2&other.value2, value2&other.value3, value2&other.value4, 0, 0);
-        ret += Float5(value1&other.value3, value1&other.value4, 0, 0, 0);
-        ret += Float5(value&other.value4, 0, 0, 0, 0);
+        Float5 ret = Float5(value4&other.value, value4&other.value1, value4&other.value2, value4&other.value3, value4&other.value4);
+        ret.selfAdd(value3&other.value1, value3&other.value2, value3&other.value3, value3&other.value4);
+        ret.selfAdd(value2&other.value2, value2&other.value3, value2&other.value4);
+        ret.selfAdd(value1&other.value3, value1&other.value4);
+        ret.selfAdd(value&other.value4);
         return ret;
+    }
+
+    inline __attribute__((always_inline)) const Float5& selfAdd(const VECTOR &other, const VECTOR &other1, const VECTOR &other2, const VECTOR &other3, const VECTOR &other4) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = (value1 & other1) | (carry & (value1 ^ other1));
+        VECTOR carry2 = (value2 & other2) | (carry1 & (value2 ^ other2));
+        VECTOR carry3 = (value3 & other3) | (carry2 & (value3 ^ other3));
+
+        value = other^value;
+        value1 = other1^value1^carry;
+        value2 = other2^value2^carry1;
+        value3 = other3^value3^carry2;
+        value4 = other4^value4^carry3;
+        
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = (value4 & other4) | (carry3 & (value4 ^ other4));
+        if(ANY(lastcarry))
+            throw std::logic_error("arithmetic overflow");
+        #endif
+
+        return *this;
+    }
+    
+    inline __attribute__((always_inline)) const Float5& selfAdd(const VECTOR &other, const VECTOR &other1, const VECTOR &other2, const VECTOR &other3) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = (value1 & other1) | (carry & (value1 ^ other1));
+        VECTOR carry2 = (value2 & other2) | (carry1 & (value2 ^ other2));
+        VECTOR carry3 = (value3 & other3) | (carry2 & (value3 ^ other3));
+
+        value = other^value;
+        value1 = other1^value1^carry;
+        value2 = other2^value2^carry1;
+        value3 = other3^value3^carry2;
+        value4 = value4^carry3;
+        
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = carry3 & value4;
+        if(ANY(lastcarry))
+            throw std::logic_error("arithmetic overflow");
+        #endif
+
+        return *this;
+    }
+    
+    inline __attribute__((always_inline)) const Float5& selfAdd(const VECTOR &other, const VECTOR &other1, const VECTOR &other2) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = (value1 & other1) | (carry & (value1 ^ other1));
+        VECTOR carry2 = (value2 & other2) | (carry1 & (value2 ^ other2));
+        VECTOR carry3 = carry2 & value3;
+
+        value = other^value;
+        value1 = other1^value1^carry;
+        value2 = other2^value2^carry1;
+        value3 = value3^carry2;
+        value4 = value4^carry3;
+        
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = carry3 & value4;
+        if(ANY(lastcarry))
+            throw std::logic_error("arithmetic overflow");
+        #endif
+
+        return *this;
+    }
+
+    inline __attribute__((always_inline)) const Float5& selfAdd(const VECTOR &other, const VECTOR &other1) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = (value1 & other1) | (carry & (value1 ^ other1));
+        VECTOR carry2 = carry1 & value2;
+        VECTOR carry3 = carry2 & value3;
+
+        value = other^value;
+        value1 = other1^value1^carry;
+        value2 = value2^carry1;
+        value3 = value3^carry2;
+        value4 = value4^carry3;
+        
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = carry3 & value4;
+        if(ANY(lastcarry))
+            throw std::logic_error("arithmetic overflow");
+        #endif
+
+        return *this;
+    }
+
+    inline __attribute__((always_inline)) const Float5& selfAdd(const VECTOR &other) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = carry & value1;
+        VECTOR carry2 = carry1 & value2;
+        VECTOR carry3 = carry2 & value3;
+
+        value = other^value;
+        value1 = value1^carry;
+        value2 = value2^carry1;
+        value3 = value3^carry2;
+        value4 = value4^carry3;
+        
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = carry3 & value4;
+        if(ANY(lastcarry))
+            throw std::logic_error("arithmetic overflow");
+        #endif
+
+        return *this;
     }
 
     inline __attribute__((always_inline)) Float5 addWithoutCarry(const Float5 &other) const {
@@ -388,15 +495,17 @@ public:
                     other.value4^value4^carry3
                     );
     }
+
     inline __attribute__((always_inline)) const Float5& operator+=(const Float5 &other) {
-        value = other.value^value;
         VECTOR carry = other.value&value;
-        value1 = other.value1^value1^carry;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
-        value2 = other.value2^value2^carry1;
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
-        value3 = other.value3^value3^carry2;
         VECTOR carry3 = (value3 & other.value3) | (carry2 & (value3 ^ other.value3));
+        
+        value = other.value^value;
+        value1 = other.value1^value1^carry;
+        value2 = other.value2^value2^carry1;
+        value3 = other.value3^value3^carry2;
         value4 = other.value4^value4^carry3;
         
         #ifdef DEBUG_OVERFLOWS
@@ -407,6 +516,7 @@ public:
 
         return *this;
     }
+
     inline __attribute__((always_inline)) const Float5& operator*=(const Float5 &other) {
         Float5 ret = Float5();
         ret += Float5(value4&other.value, value4&other.value1, value4&other.value2, value4&other.value3, value4&other.value4);

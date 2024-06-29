@@ -268,10 +268,12 @@ public:
     }
 
     inline __attribute__((always_inline)) const Float6& set(int i, double val) {
+        #ifdef DEBUG_SET
         if(size()<=i || i<0)
             throw std::logic_error("out of of range");
         if(val<0 || val>1)
             throw std::logic_error("can only set values in range [0,1]");
+        #endif
         if(val>=0.5) {
             // #pragma omp atomic
             value5 |= ONEHOT(i);
@@ -356,8 +358,7 @@ public:
     }
 
     inline __attribute__((always_inline)) Float6 operator*(const Float6 &other) const {
-        Float6 ret = Float6();
-        ret += Float6(value5&other.value, value5&other.value1, value5&other.value2, value5&other.value3, value5&other.value4, value5&other.value5);
+        Float6 ret = Float6(value5&other.value, value5&other.value1, value5&other.value2, value5&other.value3, value5&other.value4, value5&other.value5);
         ret += Float6(value4&other.value1, value4&other.value2, value4&other.value3, value4&other.value4, value4&other.value5, 0);
         ret += Float6(value3&other.value2, value3&other.value3, value3&other.value4, value3&other.value5, 0, 0);
         ret += Float6(value2&other.value3, value2&other.value4, value2&other.value5, 0, 0, 0);
@@ -474,8 +475,7 @@ public:
     }
     
     inline __attribute__((always_inline)) const Float6& operator*=(const Float6 &other) {
-        Float6 ret = Float6();
-        ret += Float6(value5&other.value, value5&other.value1, value5&other.value2, value5&other.value3, value5&other.value4, value5&other.value5);
+        Float6 ret = Float6(value5&other.value, value5&other.value1, value5&other.value2, value5&other.value3, value5&other.value4, value5&other.value5);
         ret += Float6(value4&other.value1, value4&other.value2, value4&other.value3, value4&other.value4, value4&other.value5, 0);
         ret += Float6(value3&other.value2, value3&other.value3, value3&other.value4, value3&other.value5, 0, 0);
         ret += Float6(value2&other.value3, value2&other.value4, value2&other.value5, 0, 0, 0);

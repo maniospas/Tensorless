@@ -37,10 +37,10 @@ class SGD: public Optimizer<Tensor> {
 public:
     SGD(double lr=0.001) : lr(lr) {}
     virtual void update(Tensor &param, const Tensor &grads, double lr_mult=1) {
-        param = param + grads*(lr_mult*lr);
+        //param = param + grads*(lr_mult*lr);
     }
     virtual void update(double &param, double grads, double lr_mult=1) {
-        param = param + grads*lr_mult*lr;
+        //param = param + grads*lr_mult*lr;
     }
 };
 

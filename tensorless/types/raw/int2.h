@@ -107,10 +107,12 @@ public:
     }
 
     const Int2& set(int i, int val) {
+        #ifdef DEBUG_SET
         if(size()<=i || i<0)
             throw std::logic_error("out of of range");
         if(val<0 || val>3)
             throw std::logic_error("can only set values in range [0,3]");
+        #endif
         if(val>=2) {
             // #pragma omp atomic
             value1 |= ONEHOT(i);

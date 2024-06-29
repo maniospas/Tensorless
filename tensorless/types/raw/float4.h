@@ -211,10 +211,12 @@ public:
     }
 
     const Float4& set(int i, double val) {
+        #ifdef DEBUG_SET
         if(size()<=i || i<0)
             throw std::logic_error("out of of range");
         if(val<0 || val>2)
             throw std::logic_error("can only set values in range [0,2]");
+        #endif
         if(val>=1) {
             value3 |= ONEHOT(i);
             val -= 1;
@@ -253,25 +255,25 @@ public:
         return *this;
     }
 
-    int countNonZeros() { 
+    inline __attribute__((always_inline)) int countNonZeros() { 
         VECTOR n = value | value1 | value2 | value3;
         return bitcount(n);
     }
     
-    Float4 twosComplement(const VECTOR &mask) const {
+    inline __attribute__((always_inline)) Float4 twosComplement(const VECTOR &mask) const {
         VECTOR notmask = ~mask;
         return Float4(mask&~value | (notmask&value), 
                       mask&~value1 | (notmask&value1),
                       mask&~value2 | (notmask&value2),
                       mask&~value3 | (notmask&value3)
-        ).addWithoutCarry(Float4(mask,0,0,0));
+        ).selfAdd(mask);
     }
 
-    Float4 twosComplement() const {
-        return Float4(~value, ~value1, ~value2, ~value3).addWithoutCarry(Float4(~(VECTOR)0,0,0,0));
+    inline __attribute__((always_inline)) Float4 twosComplement() const {
+        return Float4(~value, ~value1, ~value2, ~value3).selfAdd(~(VECTOR)0);
     }
     
-    Float4 twosComplementWithCarry(const VECTOR &mask, VECTOR &carry) const {
+    inline __attribute__((always_inline)) Float4 twosComplementWithCarry(const VECTOR &mask, VECTOR &carry) const {
         VECTOR notmask = ~mask;
         return Float4(mask&~value | (notmask&value), 
                       mask&~value1 | (notmask&value1),
@@ -280,28 +282,101 @@ public:
         ).addWithCarry(Float4(mask,0,0,0), carry);
     }
 
-    Float4 twosComplementWithCarry(VECTOR &carry) const {
+    inline __attribute__((always_inline)) Float4 twosComplementWithCarry(VECTOR &carry) const {
         return Float4(~value, ~value1, ~value2, ~value3).addWithCarry(Float4(~(VECTOR)0,0,0,0), carry);
     }
 
-    Float4 operator~() const {
+    inline __attribute__((always_inline)) Float4 operator~() const {
         return Float4(0, 0, 0, ~(value | value1 | value2 | value3));
     }
 
-    Float4 operator!=(const Float4 &other) const {
+    inline __attribute__((always_inline)) Float4 operator!=(const Float4 &other) const {
         return Float4(0, 0, 0, (other.value^value) | (other.value1^value1) | (other.value2^value2) | (other.value3^value3));
     }
+    
 
-    Float4 operator*(const Float4 &other) const {
-        Float4 ret = Float4();
-        ret += Float4(value3&other.value, value3&other.value1, value3&other.value2, value3&other.value3);
-        ret += Float4(value2&other.value1, value2&other.value2, value2&other.value3, 0);
-        ret += Float4(value1&other.value2, value1&other.value3, 0, 0);
-        ret += Float4(value&other.value3, 0, 0, 0);
+    inline __attribute__((always_inline)) Float4 operator*(const Float4 &other) const {
+        Float4 ret = Float4(value3&other.value, value3&other.value1, value3&other.value2, value3&other.value3);
+        ret.selfAdd(value2&other.value1, value2&other.value2, value2&other.value3);
+        ret.selfAdd(value1&other.value2, value1&other.value3);
+        ret.selfAdd(value&other.value3);
         return ret;
     }
 
-    Float4 addWithoutCarry(const Float4 &other) const {
+    
+    inline __attribute__((always_inline)) const Float4& selfAdd(const VECTOR &other, const VECTOR &other1, const VECTOR &other2, const VECTOR &other3) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = (value1 & other1) | (carry & (value1 ^ other1));
+        VECTOR carry2 = (value2 & other2) | (carry1 & (value2 ^ other2));
+        
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = (value3 & other3) | (carry2 & (value3 ^ other3));
+        if(ANY(lastcarry))
+            throw std::logic_error("arithmetic overflow");
+        #endif
+
+        value = other^value;
+        value1 = other1^value1^carry;
+        value2 = other2^value2^carry1;
+        value3 = other3^value3^carry2;
+        return *this;
+    }
+    
+    inline __attribute__((always_inline)) const Float4& selfAdd(const VECTOR &other, const VECTOR &other1, const VECTOR &other2) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = (value1 & other1) | (carry & (value1 ^ other1));
+        VECTOR carry2 = (value2 & other2) | (carry1 & (value2 ^ other2));
+        
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = carry2 & value3;
+        if(ANY(lastcarry))
+            throw std::logic_error("arithmetic overflow");
+        #endif
+
+        value = other^value;
+        value1 = other1^value1^carry;
+        value2 = other2^value2^carry1;
+        value3 = value3^carry2;
+        return *this;
+    }
+
+    inline __attribute__((always_inline)) const Float4& selfAdd(const VECTOR &other, const VECTOR &other1) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = (value1 & other1) | (carry & (value1 ^ other1));
+        VECTOR carry2 = carry1 & value2;
+        
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = carry2 & value3;
+        if(ANY(lastcarry))
+            throw std::logic_error("arithmetic overflow");
+        #endif
+
+        value = other^value;
+        value1 = other1^value1^carry;
+        value2 = value2^carry1;
+        value3 = value3^carry2;
+        return *this;
+    }
+    
+    inline __attribute__((always_inline)) const Float4& selfAdd(const VECTOR &other) {
+        VECTOR carry = other&value;
+        VECTOR carry1 = carry & value1;
+        VECTOR carry2 = carry1 & value2;
+        
+        #ifdef DEBUG_OVERFLOWS
+        VECTOR lastcarry = carry2 & value3;
+        if(ANY(lastcarry))
+            throw std::logic_error("arithmetic overflow");
+        #endif
+
+        value = other^value;
+        value1 = value1^carry;
+        value2 = value2^carry1;
+        value3 = value3^carry2;
+        return *this;
+    }
+
+    inline __attribute__((always_inline)) Float4 addWithoutCarry(const Float4 &other) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -312,7 +387,7 @@ public:
                     );
     }
 
-    Float4 addWithCarry(const Float4 &other, VECTOR &lastcarry) const {
+    inline __attribute__((always_inline)) Float4 addWithCarry(const Float4 &other, VECTOR &lastcarry) const {
         VECTOR carry = other.value&value;
         VECTOR carry1 = (value1 & other.value1) | (carry & (value1 ^ other.value1));
         VECTOR carry2 = (value2 & other.value2) | (carry1 & (value2 ^ other.value2));
@@ -358,12 +433,12 @@ public:
         value3 = other.value3^value3^carry2;
         return *this;
     }
+    
     const Float4& operator*=(const Float4 &other) {
-        Float4 ret = Float4();
-        ret += Float4(value3&other.value, value3&other.value1, value3&other.value2, value3&other.value3);
-        ret += Float4(value2&other.value1, value2&other.value2, value2&other.value3, 0);
-        ret += Float4(value1&other.value2, value1&other.value3, 0, 0);
-        ret += Float4(value&other.value3, 0, 0, 0);
+        Float4 ret = Float4(value3&other.value, value3&other.value1, value3&other.value2, value3&other.value3);
+        ret.selfAdd(value2&other.value1, value2&other.value2, value2&other.value3);
+        ret.selfAdd(value1&other.value2, value1&other.value3);
+        ret.selfAdd(value&other.value3);
         value = ret.value;
         value1 = ret.value1;
         value2 = ret.value2;
